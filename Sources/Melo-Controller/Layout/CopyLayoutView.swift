@@ -77,6 +77,7 @@ struct EditableButtonView: View {
     let button: VirtualControllerButton
     var controller: any Controller
     @Binding var layout: LayoutConfig
+    var gameId: String?
     var isEditing: Bool
     @Binding var selectedButton: String?
     @Binding var selectedJoystick: String?
@@ -112,12 +113,12 @@ struct EditableButtonView: View {
                     )
             } else {
                 if layout.buttons[button.id, default: ButtonLayout()].hidden {
-                    ButtonView(controller: controller, button: button, layout: $layout)
+                    ButtonView(controller: controller, button: button, layout: $layout, gameId: gameId)
                         .scaleEffect(layout.buttons[button.id]?.scale ?? 1.0)
                         .offset(layout.buttons[button.id]?.offset ?? .zero)
                         .opacity(0)
                 } else {
-                    ButtonView(controller: controller, button: button, layout: $layout)
+                    ButtonView(controller: controller, button: button, layout: $layout, gameId: gameId)
                         .scaleEffect(layout.buttons[button.id]?.scale ?? 1.0)
                         .offset(layout.buttons[button.id]?.offset ?? .zero)
                 }

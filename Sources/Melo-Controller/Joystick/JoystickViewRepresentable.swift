@@ -21,23 +21,26 @@ struct JoystickViewRepresentable: UIViewRepresentable {
     
     func makeUIView(context: Context) -> JoystickView {
         let view = JoystickView()
-        view.right = right
-        view.background = showBackground
-        
-        view.onPositionChanged = { newPosition in
-            DispatchQueue.main.async {
-                controller.joystickMoved(position: newPosition, right: right)
-            }
-        }
-        
-        view.onActiveChanged = { active in
-               DispatchQueue.main.async {
-                   showBackground = active
-               }
-           }
-        
+        apply(to: view)
         return view
     }
     
-    func updateUIView(_ uiView: JoystickView, context: Context) {}
+    func updateUIView(_ uiView: JoystickView, context: Context) {
+        apply(to: uiView)
+    }
+    
+    private func apply(to view: JoystickView) {
+        let controller = controller
+        let right = right
+        let showBackground = _showBackground
+        view.right = right
+        
+        view.onPositionChanged = { newPosition in
+            controller.joystickMoved(position: newPosition, right: right)
+        }
+        
+        view.onActiveChanged = { active in
+            showBackground.wrappedValue = active
+        }
+    }
 }

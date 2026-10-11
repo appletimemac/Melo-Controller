@@ -12,18 +12,14 @@ import SwiftUI
 // i am never doing uikit again
 final class JoystickView: UIView {
     var right: Bool = true
-    var background: Bool = false
+    var background: Bool = false {
+        didSet { if activeTouch == nil { backgroundView.alpha = background ? 1 : 0 } }
+    }
     var sensitivity: CGFloat = 1.2
         
     var deadZone: CGFloat = 0.08
     
-    private var dragDiameter: CGFloat {
-        let base: CGFloat = 160
-        if UIDevice.current.systemName.contains("iPadOS") {
-            return base * 1.2
-        }
-        return base
-    }
+    private var dragDiameter: CGFloat { bounds.width > 0 ? bounds.width : 160 }
     
     private var joystickSize: CGFloat { dragDiameter * 0.2 }
     private var boundarySize: CGFloat { dragDiameter }
@@ -42,6 +38,8 @@ final class JoystickView: UIView {
     private var didHitEdge   = false
     
     private var springAnimator: UIViewPropertyAnimator?
+    
+    private weak var activeTouch: UITouch?
     
     private var extendedRadius: CGFloat {
         let maxRadius = (boundarySize - joystickSize) / 2
@@ -77,8 +75,7 @@ final class JoystickView: UIView {
         joystickView.layer.shadowOffset  = CGSize(width: 0, height: 2)
         joystickView.layer.shadowRadius  = 4
 
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-        addGestureRecognizer(pan)
+        isMultipleTouchEnabled = true
 
         edgeImpact.prepare()
     }
@@ -107,56 +104,80 @@ final class JoystickView: UIView {
         )
         joystickView.layer.cornerRadius = joystickSize / 2
         
-        placeAtCenter()
+        if activeTouch == nil && springAnimator == nil {
+            placeAtCenter()
+        } else {
+            updateJoystickPosition()
+        }
     }
     
-    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        let location = gesture.location(in: self)
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
         
-        let rawOffset = CGPoint(
-            x: location.x - bounds.midX,
-            y: location.y - bounds.midY
-        )
-        
-        switch gesture.state {
-        case .began:
-            springAnimator?.stopAnimation(true)
-            springAnimator = nil
-            
-            didHitEdge = false
-            edgeImpact.prepare()
-            animateBackground(show: true)
-            
-            processOffset(rawOffset)
-            updateJoystickPosition()
-            onPositionChanged?(normalizedPosition())
-            
-            UIView.animate(withDuration: 0.12, delay: 0,
-                           usingSpringWithDamping: 0.6, initialSpringVelocity: 1) {
-                self.joystickView.transform = CGAffineTransform(scaleX: 1.12, y: 1.12)
-                self.joystickBackgroundView.transform = CGAffineTransform(scaleX: 1.08, y: 1.08)
-            }
-            onActiveChanged?(true)
-            
-        case .changed:
-            processOffset(rawOffset)
-            updateJoystickPosition()
-            onPositionChanged?(normalizedPosition())
-            
-        case .ended, .cancelled:
-            UIView.animate(withDuration: 0.15) {
-                self.joystickView.transform          = .identity
-                self.joystickBackgroundView.transform = .identity
-            }
-            
-            animateBackground(show: false)
-            onPositionChanged?(.zero)
-            springReturnToCenter()
-            onActiveChanged?(false)
-            
-        default:
-            break
+        if window == nil, activeTouch != nil {
+            endTracking()
         }
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard activeTouch == nil, let touch = touches.first else { return }
+        activeTouch = touch
+        beginTracking(at: touch.location(in: self))
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = activeTouch, touches.contains(touch) else { return }
+        processOffset(rawOffset(for: touch.location(in: self)))
+        updateJoystickPosition()
+        onPositionChanged?(normalizedPosition())
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = activeTouch, touches.contains(touch) else { return }
+        endTracking()
+    }
+    
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = activeTouch, touches.contains(touch) else { return }
+        endTracking()
+    }
+    
+    private func rawOffset(for location: CGPoint) -> CGPoint {
+        CGPoint(x: location.x - bounds.midX, y: location.y - bounds.midY)
+    }
+    
+    private func beginTracking(at location: CGPoint) {
+        let rawOffset = rawOffset(for: location)
+        springAnimator?.stopAnimation(true)
+        springAnimator = nil
+        
+        didHitEdge = false
+        edgeImpact.prepare()
+        animateBackground(show: true)
+        
+        processOffset(rawOffset)
+        updateJoystickPosition()
+        onPositionChanged?(normalizedPosition())
+        
+        UIView.animate(withDuration: 0.12, delay: 0,
+                       usingSpringWithDamping: 0.6, initialSpringVelocity: 1) {
+            self.joystickView.transform = CGAffineTransform(scaleX: 1.12, y: 1.12)
+            self.joystickBackgroundView.transform = CGAffineTransform(scaleX: 1.08, y: 1.08)
+        }
+        onActiveChanged?(true)
+    }
+    
+    private func endTracking() {
+        activeTouch = nil
+        UIView.animate(withDuration: 0.15) {
+            self.joystickView.transform          = .identity
+            self.joystickBackgroundView.transform = .identity
+        }
+        
+        animateBackground(show: false)
+        onPositionChanged?(.zero)
+        springReturnToCenter()
+        onActiveChanged?(false)
     }
     
     private func normalizedPosition() -> CGPoint {
@@ -226,8 +247,8 @@ final class JoystickView: UIView {
             self.joystickView.center          = center
             self.joystickBackgroundView.center = center
         }
+        offset = .zero
         animator.addCompletion { _ in
-            self.offset        = .zero
             self.springAnimator = nil
         }
         animator.startAnimation()

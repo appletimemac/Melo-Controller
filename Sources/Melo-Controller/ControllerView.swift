@@ -56,6 +56,7 @@ public struct ControllerView: View {
     @Environment(\.verticalSizeClass) var verticalSizeClass
     @State private var showEditControls = true
     @State var isEditing: Bool = false
+    private var isEditingInput: Bool
 
     /// An optional closure that replaces the built-in portrait/landscape layouts.
     ///
@@ -88,7 +89,8 @@ public struct ControllerView: View {
         gameName: String? = nil,
         @ViewBuilder customControllerLayout: @escaping (@escaping SubView, @escaping JoystickSubView, Bool) -> V
     ) {
-        self.isEditing = isEditing
+        self.isEditingInput = isEditing
+        self._isEditing = State(initialValue: isEditing)
         self.gameId = gameId
         self.gameName = gameName
         self.controller = controller
@@ -101,7 +103,8 @@ public struct ControllerView: View {
         gameId: String? = nil,
         gameName: String? = nil
     ) {
-        self.isEditing = isEditing
+        self.isEditingInput = isEditing
+        self._isEditing = State(initialValue: isEditing)
         self.gameId = gameId
         self.gameName = gameName
         self.controller = controller
@@ -126,6 +129,7 @@ public struct ControllerView: View {
             }
             .padding()
             .onChange(of: verticalSizeClass) { _ in controllerHandler.updateOrientation() }
+            .onChange(of: isEditingInput) { isEditing = $0 }
             .onAppear {
                 controllerHandler.updateOrientation()
                 loadLayout()
@@ -369,6 +373,7 @@ public struct ControllerView: View {
                 button: button,
                 controller: controller,
                 layout: $layout,
+                gameId: gameId,
                 isEditing: isEditing,
                 selectedButton: $selectedButton,
                 selectedJoystick: $selectedJoystick

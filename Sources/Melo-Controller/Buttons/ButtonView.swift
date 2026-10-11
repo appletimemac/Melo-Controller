@@ -13,21 +13,21 @@ public struct ButtonView: View {
     var button: VirtualControllerButton
     var opacity: Double
     @Binding var layout: LayoutConfig?
+    var gameId: String?
     var joystickDpadPoint: JoystickDPadPoint = .shared
     
     @AppStorage("onscreenhandheld") var onscreenjoy: Bool = false
-    @AppStorage("joystickDpad") private var joystickDpad = false
     @AppStorage("buttonSlide") private var buttonSlide = true
     @AppStorage("On-ScreenControllerScale") var controllerScale: Double = 1.0
     @Environment(\.presentationMode) var presentationMode
     
-    @State private var istoggle = false
     @State private var isPressed = false
     @State private var toggleState = false
     @State private var size: CGSize = .zero
     
-    public init(controller: any Controller, disabled: Bool = false, button: VirtualControllerButton, opacity: Double = 1.0, layout: Binding<LayoutConfig> = .constant(LayoutConfig())) {
+    public init(controller: any Controller, disabled: Bool = false, button: VirtualControllerButton, opacity: Double = 1.0, layout: Binding<LayoutConfig> = .constant(LayoutConfig()), gameId: String? = nil) {
         self.controller = controller
+        self.gameId = gameId
         self.disabled = disabled
         self.button = button
         self.opacity = opacity
@@ -56,10 +56,14 @@ public struct ButtonView: View {
             .frame(width: size.width, height: size.height)
             .background(buttonBackground)
             .onAppear {
-                if layout != nil {
-                    istoggle = layout?.buttons[button.id]?.toggle ?? false
-                }
                 size = calculateButtonSize()
+            }
+            .onDisappear {
+                if toggleState {
+                    toggleState = false
+                    isPressed = false
+                    sendRelease()
+                }
             }
             .onChange(of: controllerScale) { _ in
                 size = calculateButtonSize()
@@ -117,42 +121,54 @@ public struct ButtonView: View {
     }
     
     
+    private var istoggle: Bool {
+        layout?.buttons[button.id]?.toggle ?? false
+    }
+    
+    private var joystickDpad: Bool {
+        let defaults = UserDefaults.standard
+        let key = "joystickDpad-\(gameId ?? "global")"
+        if defaults.object(forKey: key) != nil {
+            return defaults.bool(forKey: key)
+        }
+        return defaults.bool(forKey: "joystickDpad")
+    }
+    
+    private func sendPress() {
+        if joystickDpad, button.isDPad {
+            joystickDpadPoint.pressed(button, controller: controller)
+        } else {
+            controller.buttonPressed(button)
+        }
+    }
+    
+    private func sendRelease() {
+        if button.isDPad, joystickDpadPoint.currentlyPressed.contains(button) {
+            joystickDpadPoint.released(button, controller: controller)
+        } else {
+            controller.buttonReleased(button)
+        }
+    }
+    
     private func handleButtonPress() {
-        guard !isPressed || istoggle else { return }
-        
-        if istoggle {
+        if istoggle || toggleState {
             toggleState.toggle()
             isPressed = toggleState
-            if joystickDpad, button.isDPad {
-                if toggleState {
-                    joystickDpadPoint.pressed(button)
-                } else {
-                    joystickDpadPoint.released(button)
-                }
-            } else {
-                toggleState ? controller.buttonPressed(button) : controller.buttonReleased(button)
-            }
+            toggleState ? sendPress() : sendRelease()
             Haptics.shared.play(.soft)
         } else {
+            guard !isPressed else { return }
             isPressed = true
-            if joystickDpad, button.isDPad {
-                joystickDpadPoint.pressed(button)
-            } else {
-                controller.buttonPressed(button)
-            }
+            sendPress()
             Haptics.shared.play(.soft)
         }
     }
     
     private func handleButtonRelease() {
-        if istoggle { return }
-        guard isPressed else { return }
+        guard !toggleState, isPressed else { return }
         
         isPressed = false
-        if joystickDpad, button.isDPad {
-            joystickDpadPoint.released(button); return
-        }
-        controller.buttonReleased(button)
+        sendRelease()
     }
     
     private func calculateButtonSize() -> CGSize {

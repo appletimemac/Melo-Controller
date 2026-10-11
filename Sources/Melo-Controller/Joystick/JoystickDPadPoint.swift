@@ -10,29 +10,24 @@ import Foundation
 
 class JoystickDPadPoint: ObservableObject {
     static var shared = JoystickDPadPoint()
-    var controller: (any Controller)? = nil
     @Published var joystickDpadPoint: (x: Double, y: Double) = (0, 0)
     @Published var currentlyPressed: Set<VirtualControllerButton> = []
     @Published var isJoystickActive: Bool = false
     
     
-    func pressed(_ button: VirtualControllerButton) {
+    func pressed(_ button: VirtualControllerButton, controller: any Controller) {
         guard button.isDPad else { return }
         currentlyPressed.insert(button)
-        print(button)
-        print(currentlyPressed)
-        recomputeDPad()
+        recomputeDPad(controller: controller)
     }
 
-    func released(_ button: VirtualControllerButton) {
+    func released(_ button: VirtualControllerButton, controller: any Controller) {
         guard button.isDPad else { return }
         currentlyPressed.remove(button)
-        print(button)
-        print(currentlyPressed)
-        recomputeDPad()
+        recomputeDPad(controller: controller)
     }
 
-    private func recomputeDPad() {
+    private func recomputeDPad(controller: any Controller) {
         // Y axis
         if currentlyPressed.contains(.dPadUp) {
             joystickDpadPoint.y = -1
@@ -51,8 +46,6 @@ class JoystickDPadPoint: ObservableObject {
             joystickDpadPoint.x = 0
         }
         
-        print(joystickDpadPoint)
-        
-        controller?.joystickMoved(position: CGPoint(x: joystickDpadPoint.x, y: joystickDpadPoint.y), right: false)
+        controller.joystickMoved(position: CGPoint(x: joystickDpadPoint.x, y: joystickDpadPoint.y), right: false)
     }
 }

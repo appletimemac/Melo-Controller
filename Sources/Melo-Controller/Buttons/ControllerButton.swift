@@ -22,6 +22,8 @@ final class ControllerTouchRouter {
     
     private var owners: [ObjectIdentifier: ControllerTouchView] = [:]
     
+    private var tracked: Set<ObjectIdentifier> = []
+    
     // MARK: Registration
     
     func register(_ view: ControllerTouchView) {
@@ -42,14 +44,14 @@ final class ControllerTouchRouter {
         let key = ObjectIdentifier(touch)
         owners[key]?.endPress()
         owners[key] = view
+        tracked.insert(key)
         view.beginPress()
     }
     
     func touchMoved(_ touch: UITouch, on view: ControllerTouchView) {
         let key = ObjectIdentifier(touch)
+        guard view.slideEnabled, tracked.contains(key) else { return }
         let current = owners[key]
-        
-        guard view.slideEnabled else { return }
         
         let next = target(at: touch.location(in: nil), in: touch.window)
         guard next !== current else { return }
@@ -61,9 +63,8 @@ final class ControllerTouchRouter {
     
     func touchEnded(_ touch: UITouch, on view: ControllerTouchView) {
         let key = ObjectIdentifier(touch)
-        let owner = owners[key] ?? view
-        owners[key] = nil
-        owner.endPress()
+        tracked.remove(key)
+        owners.removeValue(forKey: key)?.endPress()
     }
     
     private func target(at point: CGPoint, in window: UIWindow?) -> ControllerTouchView? {
