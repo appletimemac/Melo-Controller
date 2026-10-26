@@ -29,7 +29,8 @@ public typealias JoystickSubView = (String, Bool, Binding<Bool>) -> AnyView
 /// Pass a `customControllerLayout` closure to provide your own arrangement of buttons and sticks.
 ///
 /// - Controls draw as Liquid Glass unless the `On-ScreenControllerGlass` user default is `false` or
-///   Reduce Transparency is on. `On-ScreenControllerScale` scales every control.
+///   Reduce Transparency is on. `On-ScreenControllerScale` scales every control, unless the variant
+///   showing has a size of its own under ``ControllerLayoutVariant/scaleKey``.
 /// - Rectangles in ``EnvironmentValues/controllerKeepClearRegions`` (such as a fold) are kept clear of
 ///   the center buttons.
 /// - Layouts are stored per game and per variant, and the editor edits the variant that is showing.
@@ -59,6 +60,8 @@ public struct ControllerView: View {
     @AppStorage("stickButton") private var stickButton = false
     @AppStorage(ControllerLayoutVariant.portrait.verticalOffsetKey) private var portraitOffset: Double = 0
     @AppStorage(ControllerLayoutVariant.landscape.verticalOffsetKey) private var landscapeOffset: Double = 0
+    @AppStorage(ControllerLayoutVariant.portrait.scaleKey) private var portraitScale: Double?
+    @AppStorage(ControllerLayoutVariant.landscape.scaleKey) private var landscapeScale: Double?
     @Environment(\.controllerKeepClearRegions) private var keepClearRegions
     @State private var hideDpad = false
     @State private var hideABXY = false
@@ -68,6 +71,7 @@ public struct ControllerView: View {
     @State private var controlsFrame: CGRect?
     @State var isEditing: Bool = false
     private var isEditingInput: Bool
+    private var onFinishEditing: (() -> Void)?
 
     /// An optional closure that replaces the built-in portrait/landscape layouts.
     ///
@@ -90,6 +94,8 @@ public struct ControllerView: View {
     ///     Pass `nil` to use the global layout.
     ///   - gameName: An optional display name for the game, shown in the layout editor
     ///     instead of `gameId`. The layout is still saved under `gameId`.
+    ///   - onFinishEditing: Called when the layout editor's Done ends edit mode, so a host that
+    ///     opened the editor in place can carry on.
     ///   - customControllerLayout: A `@ViewBuilder` closure that composes your own
     ///     controller UI using the provided ``SubView`` and ``JoystickSubView`` factories.
     ///     The `Bool` argument is `true` while the compact (portrait) arrangement is showing,
@@ -99,6 +105,7 @@ public struct ControllerView: View {
         isEditing: Bool,
         gameId: String? = nil,
         gameName: String? = nil,
+        onFinishEditing: (() -> Void)? = nil,
         @ViewBuilder customControllerLayout: @escaping (@escaping SubView, @escaping JoystickSubView, Bool) -> V
     ) {
         self.isEditingInput = isEditing
@@ -106,6 +113,7 @@ public struct ControllerView: View {
         self.gameId = gameId
         self.gameName = gameName
         self.controller = controller
+        self.onFinishEditing = onFinishEditing
         self._customControllerLayout = State(initialValue: { s1, s2, s3 in AnyView(customControllerLayout(s1, s2, s3)) })
     }
     
@@ -113,13 +121,15 @@ public struct ControllerView: View {
         controller: any Controller,
         isEditing: Bool,
         gameId: String? = nil,
-        gameName: String? = nil
+        gameName: String? = nil,
+        onFinishEditing: (() -> Void)? = nil
     ) {
         self.isEditingInput = isEditing
         self._isEditing = State(initialValue: isEditing)
         self.gameId = gameId
         self.gameName = gameName
         self.controller = controller
+        self.onFinishEditing = onFinishEditing
     }
 
 
@@ -133,12 +143,16 @@ public struct ControllerView: View {
             let clearance = FoldClearance(paneSize: proxy.size, regions: keepClearRegions)
             let variant = ControllerLayoutVariant(
                 paneSize: proxy.size,
-                controllerScale: CGFloat(controllerScale),
+                controllerScale: CGFloat(scale(for: .landscape)),
                 stickButtons: stickButton,
                 foldWidth: clearance.centerFoldWidth
             )
             let layout = layoutBinding(for: variant)
-            let placement = ControllerPlacement(variant: variant, offsetRange: offsetRange(paneHeight: proxy.size.height))
+            let placement = ControllerPlacement(
+                variant: variant,
+                offsetRange: offsetRange(paneHeight: proxy.size.height),
+                scale: CGFloat(scale(for: variant))
+            )
             ZStack {
                 ControllerSurface(
                     variant: variant,
@@ -199,12 +213,23 @@ public struct ControllerView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            .environment(\.resolvedControllerScale, scale(for: variant))
             .preference(key: ControllerPlacementKey.self, value: placement)
+            .onChange(of: isEditing) { _, editing in
+                if !editing { onFinishEditing?() }
+            }
             .onChange(of: variant) { oldVariant, newVariant in
                 // Rotating or folding in the editor must not lose what was changed in the variant being left.
                 if isEditing { saveIfEdited(oldVariant) }
                 reloadIfUnedited(newVariant)
             }
+        }
+    }
+
+    private func scale(for variant: ControllerLayoutVariant) -> Double {
+        switch variant {
+        case .portrait: return portraitScale ?? controllerScale
+        case .landscape: return landscapeScale ?? controllerScale
         }
     }
 

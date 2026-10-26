@@ -33,6 +33,12 @@ public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
         "On-ScreenControllerOffset-\(rawValue)"
     }
 
+    /// The user default holding this arrangement's controller size, shared by every game. While it is
+    /// absent the arrangement uses the `On-ScreenControllerScale` default.
+    public var scaleKey: String {
+        "On-ScreenControllerScale-\(rawValue)"
+    }
+
     /// Width of one half of the controller at scale 1 (the shoulder row and the stick).
     static let halfWidth: CGFloat = 160
 
@@ -44,7 +50,8 @@ public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
 
     /// - Parameters:
     ///   - paneSize: The space the controller is laid out in.
-    ///   - controllerScale: The user's On-Screen Controller scale.
+    ///   - controllerScale: The spread arrangement's controller size, since the spread arrangement is
+    ///     only chosen when it fits at its own size.
     ///   - stickButtons: Whether the L3 and R3 buttons are shown beside Minus and Plus.
     ///   - foldWidth: Width of a fold that crosses the middle of the pane, which the center buttons
     ///     must also fit around (see ``FoldClearance/centerFoldWidth``).

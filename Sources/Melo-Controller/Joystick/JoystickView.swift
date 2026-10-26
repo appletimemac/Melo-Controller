@@ -17,7 +17,9 @@ struct EditableJoystickView: View {
     @Binding var selectedJoystick: String?
     @Binding var selectedButton: String?
     @GestureState private var dragOffset = CGSize.zero
-    @AppStorage("On-ScreenControllerScale") var controllerScale: Double = 1.0
+    @AppStorage("On-ScreenControllerScale") private var defaultControllerScale: Double = 1.0
+    @Environment(\.resolvedControllerScale) private var resolvedControllerScale
+    private var controllerScale: Double { resolvedControllerScale ?? defaultControllerScale }
     
     private var glass = ControllerGlassPreference()
     

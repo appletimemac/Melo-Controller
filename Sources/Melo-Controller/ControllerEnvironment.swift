@@ -18,3 +18,9 @@ public extension EnvironmentValues {
     /// the compact layout widens the gap between its two halves. The side columns never move.
     @Entry var controllerKeepClearRegions: [CGRect] = []
 }
+
+extension EnvironmentValues {
+    /// The size of the layout variant showing, which ``ControllerView`` sets for the controls inside
+    /// it. Nil outside one, where controls use the shared `On-ScreenControllerScale` default.
+    @Entry var resolvedControllerScale: Double? = nil
+}

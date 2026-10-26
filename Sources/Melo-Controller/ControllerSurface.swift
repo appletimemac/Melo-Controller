@@ -22,7 +22,9 @@ struct ControllerSurface: View {
     @Binding var controlsFrame: CGRect?
     var customControllerLayout: ((@escaping SubView, @escaping JoystickSubView, Bool) -> AnyView)?
 
-    @AppStorage("On-ScreenControllerScale") private var controllerScale: Double = 1.0
+    @AppStorage("On-ScreenControllerScale") private var defaultControllerScale: Double = 1.0
+    @Environment(\.resolvedControllerScale) private var resolvedControllerScale
+    private var controllerScale: Double { resolvedControllerScale ?? defaultControllerScale }
     @AppStorage("stickButton") private var stickButton = false
     private var glass = ControllerGlassPreference()
 

@@ -22,7 +22,8 @@ class JoystickDPadUIHandler: ObservableObject {
 }
 
 struct LayoutEditorView: View {
-    @AppStorage("On-ScreenControllerScale") private var controllerScale: Double = 1.0
+    @AppStorage("On-ScreenControllerScale") private var defaultControllerScale: Double = 1.0
+    @Environment(\.resolvedControllerScale) private var resolvedControllerScale
     @AppStorage("buttonSlide") private var buttonSlide = true
     @StateObject var joystickDpad = JoystickDPadUIHandler()
     
@@ -215,9 +216,14 @@ struct LayoutEditorView: View {
                 subtitle: "Tap a button or stick to edit it, drag it to move it."
             )
             
+            // The size belongs to the variant showing, in every game, like the in-game size controls.
             EditorSliderRow(
                 title: "Controller Size",
-                value: Binding(get: { CGFloat(controllerScale) }, set: { controllerScale = Double($0) })
+                value: Binding(
+                    get: { CGFloat(resolvedControllerScale ?? defaultControllerScale) },
+                    set: { UserDefaults.standard.set(Double($0), forKey: variant.scaleKey) }
+                ),
+                range: ControllerPlacement.scaleRange
             )
             
             EditorToggleRow(
