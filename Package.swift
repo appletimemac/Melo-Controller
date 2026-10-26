@@ -6,8 +6,7 @@ import PackageDescription
 let package = Package(
     name: "Melo-Controller",
     platforms: [
-        .iOS(.v15),
-        
+        .iOS("27.2"),
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
