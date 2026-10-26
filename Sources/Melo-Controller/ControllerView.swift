@@ -166,13 +166,11 @@ public struct ControllerView: View {
                                         showEditControls = true
                                     }
                                 }) {
-                                    Image(systemName: "eye")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundColor(.primary)
-                                        .padding(13)
-                                        .background(.ultraThinMaterial, in: Circle())
+                                    Label("Show Editor Controls", systemImage: "eye")
+                                        .labelStyle(.iconOnly)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.glass)
+                                .buttonBorderShape(.circle)
                                 .padding(12)
 
                                 Spacer()

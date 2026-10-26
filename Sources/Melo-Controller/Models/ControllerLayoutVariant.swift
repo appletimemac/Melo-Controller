@@ -3,7 +3,7 @@
 //  Melo-Controller
 //
 
-import CoreGraphics
+import SwiftUI
 
 /// Which arrangement of the on-screen controller is showing, decided only from the space the
 /// ``ControllerView`` is actually given. It never looks at the device, the screen or the window.
@@ -12,6 +12,20 @@ enum ControllerLayoutVariant: String, CaseIterable {
     case portrait
     /// Spread arrangement: one half at each side with the center buttons between them.
     case landscape
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .portrait: return "Portrait Layout"
+        case .landscape: return "Landscape Layout"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .portrait: return "iphone"
+        case .landscape: return "iphone.landscape"
+        }
+    }
 
     /// Width of one half of the controller at scale 1 (the shoulder row and the stick).
     static let halfWidth: CGFloat = 160

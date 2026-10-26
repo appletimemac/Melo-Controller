@@ -11,23 +11,23 @@ struct CopyLayoutView: View {
     let targetGameId: String?
     @Binding var layout: LayoutConfig
     var variant: ControllerLayoutVariant
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     @State private var availableLayouts: [String] = []
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
-                Section(header: Text("Available Layouts")) {
+                Section("Available Layouts") {
                     Button(action: {
                         copyLayout(from: nil)
                     }) {
                         HStack {
-                            Image(systemName: "gear")
-                                .foregroundColor(.blue)
-                            Text("Default Layout")
+                            Label("Default Layout", systemImage: "gear")
+                                .foregroundStyle(.primary)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .foregroundColor(.gray)
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                         }
                     }
                     
@@ -37,12 +37,12 @@ struct CopyLayoutView: View {
                                 copyLayout(from: gameId)
                             }) {
                                 HStack {
-                                    Image(systemName: "gamecontroller.fill")
-                                        .foregroundColor(.green)
-                                    Text(gameId)
+                                    Label(gameId, systemImage: "gamecontroller.fill")
+                                        .foregroundStyle(.primary)
                                     Spacer()
                                     Image(systemName: "chevron.right")
-                                        .foregroundColor(.gray)
+                                        .foregroundStyle(.secondary)
+                                        .accessibilityHidden(true)
                                 }
                             }
                         }
@@ -51,11 +51,13 @@ struct CopyLayoutView: View {
             }
             .navigationTitle("Copy Layout")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", systemImage: "xmark", role: .cancel) {
+                        dismiss()
+                    }
                 }
-            )
+            }
         }
         .onAppear {
             loadAvailableLayouts()
@@ -70,7 +72,7 @@ struct CopyLayoutView: View {
         let sourceLayout = LayoutManager.shared.load(for: sourceGameId, variant: variant)
         layout = sourceLayout
         LayoutManager.shared.save(layout, for: targetGameId, variant: variant)
-        presentationMode.wrappedValue.dismiss()
+        dismiss()
     }
 }
 

@@ -30,7 +30,9 @@ struct EditableJoystickView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
-        .foregroundColor(.white.opacity(0.8))
+        .foregroundStyle(.white.opacity(0.8))
+        // The placeholder is a fixed 160 pt circle, so its label stops growing before it spills out.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
     
     private var placeholderOutline: some View {

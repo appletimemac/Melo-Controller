@@ -39,7 +39,6 @@ struct LayoutEditorView: View {
     @State private var showingLayoutOptions = false
     @State private var showingResetAlert = false
     
-    @State private var isWide = false
     @Environment(\.dismiss) var dismiss
     
     var gameId: String?
@@ -68,24 +67,38 @@ struct LayoutEditorView: View {
     }
     
     var body: some View {
-        VStack(spacing: 10) {
-            toolbar
-            
-            HStack(alignment: .top, spacing: 10) {
-                inspector
-                    .frame(maxWidth: 360, alignment: .leading)
-                
-                Spacer(minLength: 0)
-                
-                if let gameTitle = gameTitle {
-                    gameBadge(gameTitle)
+        // The editor arranges itself from the space it has, not from the device it runs on.
+        GeometryReader { proxy in
+            let isWide = proxy.size.width >= 520
+            GlassEffectContainer(spacing: 12) {
+                VStack(spacing: 10) {
+                    toolbar(isWide: isWide)
+                    
+                    if isWide {
+                        HStack(alignment: .top, spacing: 10) {
+                            scrollingInspector
+                                .frame(maxWidth: 360, alignment: .leading)
+                            
+                            Spacer(minLength: 0)
+                            
+                            VStack(alignment: .trailing, spacing: 8) {
+                                badges
+                            }
+                        }
+                    } else {
+                        HStack(spacing: 8) {
+                            badges
+                            Spacer(minLength: 0)
+                        }
+                        
+                        scrollingInspector
+                    }
+                    
+                    Spacer(minLength: 0)
                 }
+                .padding(12)
             }
-            
-            Spacer(minLength: 0)
         }
-        .padding(12)
-        .onGeometryChange(for: Bool.self) { $0.size.width >= 520 } action: { isWide = $0 }
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: selectionKey)
         .onAppear {
             syncDpadHandler()
@@ -109,19 +122,36 @@ struct LayoutEditorView: View {
     }
     
     
-    private var toolbar: some View {
-        HStack(spacing: 16) {
-            EditorChip(icon: "eye.slash", title: "Hide", showTitle: isWide) {
+    /// Titles and symbols when they fit, symbols alone when they do not, however large the text is.
+    @ViewBuilder
+    private func toolbar(isWide: Bool) -> some View {
+        if isWide {
+            ViewThatFits(in: .horizontal) {
+                toolbarRow(showTitles: true, showDoneTitle: true)
+                toolbarRow(showTitles: false, showDoneTitle: true)
+                toolbarRow(showTitles: false, showDoneTitle: false)
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                toolbarRow(showTitles: false, showDoneTitle: true)
+                toolbarRow(showTitles: false, showDoneTitle: false)
+            }
+        }
+    }
+    
+    private func toolbarRow(showTitles: Bool, showDoneTitle: Bool) -> some View {
+        HStack(spacing: 8) {
+            EditorToolbarButton(title: "Hide", systemImage: "eye.slash", showTitle: showTitles) {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showEditControls = false
                 }
             }
             
-            EditorChip(icon: "slider.horizontal.3", title: "Options", showTitle: isWide) {
+            EditorToolbarButton(title: "Options", systemImage: "slider.horizontal.3", showTitle: showTitles) {
                 showingLayoutOptions = true
             }
             
-            EditorChip(icon: "arrow.counterclockwise", title: "Reset All", tint: .orange, showTitle: isWide) {
+            EditorToolbarButton(title: "Reset All", systemImage: "arrow.counterclockwise", tint: .orange, showTitle: showTitles) {
                 showingResetAlert = true
             }
             
@@ -133,31 +163,33 @@ struct LayoutEditorView: View {
                 isEditing = false
                 dismiss()
             } label: {
-                Text("Done")
+                Label("Done", systemImage: "checkmark")
+                    .labelStyle(EditorToolbarLabelStyle(showTitle: showDoneTitle))
                     .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.glassProminent)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 11)
-        .background(.ultraThinMaterial, in: Capsule(style: .continuous))
     }
     
-    private func gameBadge(_ title: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "gamecontroller.fill")
-            Text(title)
-                .lineLimit(1)
-                .truncationMode(.middle)
+    @ViewBuilder
+    private var badges: some View {
+        if let gameTitle = gameTitle {
+            EditorBadge(title: gameTitle, systemImage: "gamecontroller.fill")
         }
-        .font(.caption)
-        .foregroundColor(.secondary)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .frame(maxWidth: 220)
-        .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+        
+        EditorBadge(title: variant.title, systemImage: variant.systemImage)
     }
     
+    
+    /// The inspector at its natural size, or scrolling when large text makes it taller than the room it has.
+    private var scrollingInspector: some View {
+        ViewThatFits(in: .vertical) {
+            inspector
+            ScrollView { inspector }
+                .scrollBounceBehavior(.basedOnSize)
+        }
+    }
     
     @ViewBuilder
     private var inspector: some View {
@@ -330,7 +362,7 @@ struct EditorCard<Content: View>: View {
             content
         }
         .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
@@ -347,7 +379,7 @@ struct EditorCardHeader<Accessory: View>: View {
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -371,31 +403,74 @@ struct EditorResetButton: View {
     var body: some View {
         Button("Reset", action: action)
             .font(.caption.weight(.semibold))
-            .foregroundColor(.orange)
+            .foregroundStyle(.orange)
             .buttonStyle(.plain)
     }
 }
 
-struct EditorChip: View {
-    let icon: String
-    let title: String
+/// A toolbar button of the editor: a glass button with a title and a symbol. Narrow layouts show the
+/// symbol alone; the title stays as the accessibility label.
+struct EditorToolbarButton: View {
+    let title: LocalizedStringKey
+    let systemImage: String
     var tint: Color?
     var showTitle: Bool = true
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                if showTitle {
-                    Text(title)
-                        .font(.caption.weight(.medium))
-                }
-            }
-            .foregroundColor(tint ?? .primary)
+            Label(title, systemImage: systemImage)
+                .labelStyle(EditorToolbarLabelStyle(showTitle: showTitle))
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glass)
+        .foregroundStyle(tint ?? .primary)
+    }
+}
+
+private struct EditorToolbarLabelStyle: LabelStyle {
+    let showTitle: Bool
+    
+    func makeBody(configuration: Configuration) -> some View {
+        if showTitle {
+            Label(configuration)
+        } else {
+            Label(configuration)
+                .labelStyle(.iconOnly)
+        }
+    }
+}
+
+/// A small read-only glass capsule naming the game or the layout being edited.
+struct EditorBadge: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+    
+    init(title: LocalizedStringKey, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+    
+    init(title: String, systemImage: String) {
+        self.title = LocalizedStringKey(title)
+        self.systemImage = systemImage
+    }
+    
+    var body: some View {
+        Label {
+            Text(title)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .glassEffect(.regular, in: Capsule(style: .continuous))
+        .frame(maxWidth: 220)
     }
 }
 
@@ -416,19 +491,19 @@ struct EditorSliderRow: View {
             HStack {
                 Text(title)
                     .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Text(String(format: "%.1f×", value))
                     .font(.caption.weight(.semibold).monospacedDigit())
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             
             HStack(spacing: 12) {
-                EditorStepperButton(icon: "minus") { nudge(-step) }
+                EditorStepperButton(icon: "minus", label: "Decrease") { nudge(-step) }
                 
                 Slider(value: $value, in: range, step: step)
                 
-                EditorStepperButton(icon: "plus") { nudge(step) }
+                EditorStepperButton(icon: "plus", label: "Increase") { nudge(step) }
             }
         }
     }
@@ -436,16 +511,20 @@ struct EditorSliderRow: View {
 
 struct EditorStepperButton: View {
     let icon: String
+    let label: LocalizedStringKey
     let action: () -> Void
+    @ScaledMetric(relativeTo: .footnote) private var tapSize: CGFloat = 32
     
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.secondary)
-                .frame(width: 22, height: 26)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(.secondary)
+                .frame(minWidth: tapSize, minHeight: tapSize)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 
@@ -462,7 +541,7 @@ struct EditorToggleRow: View {
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

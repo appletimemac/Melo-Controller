@@ -17,7 +17,7 @@ struct LayoutOptionsView: View {
     var gameName: String? = nil
     @Binding var layout: LayoutConfig
     var variant: ControllerLayoutVariant
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     
     @State private var showingResetAlert = false
     @State private var showingCopySheet = false
@@ -30,128 +30,85 @@ struct LayoutOptionsView: View {
     @State private var showingAlert = false
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                if let gameId = gameId {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Current Game")
-                            .font(.headline)
-                        HStack {
-                            Image(systemName: "gamecontroller.fill")
-                                .foregroundColor(.blue)
-                            Text(gameName ?? gameId)
-                                .font(.subheadline)
-                            Spacer()
-                            if LayoutManager.shared.hasCustomLayout(for: gameId, variant: variant) {
-                                HStack {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
-                                    Text("Custom Layout")
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    if let gameId = gameId {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Current Game")
+                                .font(.headline)
+                            HStack {
+                                Image(systemName: "gamecontroller.fill")
+                                    .foregroundStyle(.blue)
+                                Text(gameName ?? gameId)
+                                    .font(.subheadline)
+                                Spacer()
+                                if LayoutManager.shared.hasCustomLayout(for: gameId, variant: variant) {
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                        Text("Custom Layout")
+                                            .font(.caption)
+                                    }
+                                    .foregroundStyle(.green)
+                                } else {
+                                    Text("Using Default")
                                         .font(.caption)
-                                        .foregroundColor(.green)
+                                        .foregroundStyle(.secondary)
                                 }
-                            } else {
-                                Text("Using Default")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
                             }
+                            .padding()
+                            .background(Color.gray.opacity(0.1), in: .rect(cornerRadius: 8))
                         }
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Layout Actions")
+                            .font(.headline)
+                        
+                        Label(variant.title, systemImage: variant.systemImage)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        
+                        actionRow("Copy Layout From…", systemImage: "doc.on.doc", color: .blue) {
+                            showingCopySheet = true
+                        }
+                        
+                        actionRow("Export Layout…", systemImage: "square.and.arrow.up", color: .purple, action: exportCurrentLayout)
+                        
+                        actionRow("Import Layout…", systemImage: "square.and.arrow.down", color: .teal) {
+                            showingFileImporter = true
+                        }
+                        
+                        actionRow("Reset to Default Layout", systemImage: "arrow.clockwise", color: .orange) {
+                            layout = LayoutManager.shared.load(for: nil, variant: variant)
+                        }
+                        
+                        actionRow("Delete Custom Layout", systemImage: "trash", color: .red) {
+                            showingResetAlert = true
+                        }
                     }
                 }
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Layout Actions")
-                        .font(.headline)
-                    
-                    Button(action: { showingCopySheet = true }) {
-                        HStack {
-                            Image(systemName: "doc.on.doc")
-                            Text("Copy Layout From…")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                        }
-                        .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
-                        .cornerRadius(8)
-                    }
-                    
-                    Button(action: exportCurrentLayout) {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Export Layout…")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                        }
-                        .padding()
-                        .background(Color.purple.opacity(0.1))
-                        .foregroundColor(.purple)
-                        .cornerRadius(8)
-                    }
-                    .sheet(item: $exportItem) { item in
-                        ShareSheet(activityItems: [item.url])
-                    }
-                    
-                    Button(action: { showingFileImporter = true }) {
-                        HStack {
-                            Image(systemName: "square.and.arrow.down")
-                            Text("Import Layout…")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                        }
-                        .padding()
-                        .background(Color.teal.opacity(0.1))
-                        .foregroundColor(.teal)
-                        .cornerRadius(8)
-                    }
-                    .fileImporter(
-                        isPresented: $showingFileImporter,
-                        allowedContentTypes: [.meloLayout, .json],
-                        allowsMultipleSelection: false
-                    ) { result in
-                        handleImport(result: result)
-                    }
-                    
-                    Button(action: {
-                        layout = LayoutManager.shared.load(for: nil, variant: variant)
-                    }) {
-                        HStack {
-                            Image(systemName: "arrow.clockwise")
-                            Text("Reset to Default Layout")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                        }
-                        .padding()
-                        .background(Color.orange.opacity(0.1))
-                        .foregroundColor(.orange)
-                        .cornerRadius(8)
-                    }
-                    
-                    Button(action: { showingResetAlert = true }) {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("Delete Custom Layout")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                        }
-                        .padding()
-                        .background(Color.red.opacity(0.1))
-                        .foregroundColor(.red)
-                        .cornerRadius(8)
-                    }
-                }
-                
-                Spacer()
+                .padding()
             }
-            .padding()
             .navigationTitle("Layout Options")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: Button("Done") {
-                presentationMode.wrappedValue.dismiss()
-            })
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", systemImage: "checkmark", role: .confirm) {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .sheet(item: $exportItem) { item in
+            ShareSheet(activityItems: [item.url])
+        }
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.meloLayout, .json],
+            allowsMultipleSelection: false
+        ) { result in
+            handleImport(result: result)
         }
         .alert("Delete Custom Layout", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) {}
@@ -169,6 +126,20 @@ struct LayoutOptionsView: View {
         }
         .sheet(isPresented: $showingCopySheet) {
             CopyLayoutView(targetGameId: gameId, layout: $layout, variant: variant)
+        }
+    }
+    
+    private func actionRow(_ title: LocalizedStringKey, systemImage: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Label(title, systemImage: systemImage)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .accessibilityHidden(true)
+            }
+            .padding()
+            .background(color.opacity(0.1), in: .rect(cornerRadius: 8))
+            .foregroundStyle(color)
         }
     }
     

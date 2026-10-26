@@ -19,7 +19,6 @@ public struct ButtonView: View {
     @AppStorage("onscreenhandheld") var onscreenjoy: Bool = false
     @AppStorage("buttonSlide") private var buttonSlide = true
     @AppStorage("On-ScreenControllerScale") var controllerScale: Double = 1.0
-    @Environment(\.presentationMode) var presentationMode
     private var glass = ControllerGlassPreference()
     
     @State private var isPressed = false
@@ -138,13 +137,13 @@ public struct ButtonView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: size.width * 1.25, height: size.height * 1.25)
-                    .foregroundColor(Color.gray.opacity(0.4))
+                    .foregroundStyle(Color.gray.opacity(0.4))
             } else if button.isTrigger {
                 Image(systemName: convertTriggerIconToButton(buttonConfig.iconName))
                     .resizable()
                     .scaledToFit()
                     .frame(width: size.width * 1.25, height: size.height * 1.25)
-                    .foregroundColor(Color.gray.opacity(0.4))
+                    .foregroundStyle(Color.gray.opacity(0.4))
             }
         }
     }
