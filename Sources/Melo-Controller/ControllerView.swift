@@ -33,6 +33,8 @@ public typealias JoystickSubView = (String, Bool, Binding<Bool>) -> AnyView
 /// - Rectangles in ``EnvironmentValues/controllerKeepClearRegions`` (such as a fold) are kept clear of
 ///   the center buttons.
 /// - Layouts are stored per game and per variant, and the editor edits the variant that is showing.
+/// - Each variant keeps a vertical offset shared by every game (see ``ControllerPlacement``), which
+///   moves the built-in layouts up or down inside the pane but never out of it.
 ///
 /// **Basic usage (default layout):**
 /// ```swift
@@ -55,12 +57,15 @@ public struct ControllerView: View {
     var controller: any Controller
     @AppStorage("On-ScreenControllerScale") private var controllerScale: Double = 1.0
     @AppStorage("stickButton") private var stickButton = false
+    @AppStorage(ControllerLayoutVariant.portrait.verticalOffsetKey) private var portraitOffset: Double = 0
+    @AppStorage(ControllerLayoutVariant.landscape.verticalOffsetKey) private var landscapeOffset: Double = 0
     @Environment(\.controllerKeepClearRegions) private var keepClearRegions
     @State private var hideDpad = false
     @State private var hideABXY = false
     @State private var selectedButton: String?
     @State private var selectedJoystick: String?
     @State private var showEditControls = true
+    @State private var controlsFrame: CGRect?
     @State var isEditing: Bool = false
     private var isEditingInput: Bool
 
@@ -133,6 +138,7 @@ public struct ControllerView: View {
                 foldWidth: clearance.centerFoldWidth
             )
             let layout = layoutBinding(for: variant)
+            let placement = ControllerPlacement(variant: variant, offsetRange: offsetRange(paneHeight: proxy.size.height))
             ZStack {
                 ControllerSurface(
                     variant: variant,
@@ -145,8 +151,10 @@ public struct ControllerView: View {
                     hideABXY: $hideABXY,
                     selectedButton: $selectedButton,
                     selectedJoystick: $selectedJoystick,
+                    controlsFrame: $controlsFrame,
                     customControllerLayout: customControllerLayout
                 )
+                .offset(y: placement.clamp(storedOffset(for: variant)))
                 .onChange(of: isEditingInput) { _, newValue in isEditing = newValue }
                 .onAppear { loadLayouts() }
 
@@ -191,12 +199,30 @@ public struct ControllerView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            .preference(key: ControllerPlacementKey.self, value: placement)
             .onChange(of: variant) { oldVariant, newVariant in
                 // Rotating or folding in the editor must not lose what was changed in the variant being left.
                 if isEditing { saveIfEdited(oldVariant) }
                 reloadIfUnedited(newVariant)
             }
         }
+    }
+
+    private func storedOffset(for variant: ControllerLayoutVariant) -> CGFloat {
+        switch variant {
+        case .portrait: return CGFloat(portraitOffset)
+        case .landscape: return CGFloat(landscapeOffset)
+        }
+    }
+
+    /// The controls may move until they come within a small margin of the pane's top or bottom
+    /// edge; the pane ends at the fold or the game picture, so they never cover either.
+    private func offsetRange(paneHeight: CGFloat) -> ClosedRange<CGFloat> {
+        guard let controlsFrame else { return 0...0 }
+        let margin: CGFloat = 8
+        let up = max(0, controlsFrame.minY - margin)
+        let down = max(0, paneHeight - controlsFrame.maxY - margin)
+        return -up...down
     }
 
     private func layoutBinding(for variant: ControllerLayoutVariant) -> Binding<LayoutConfig> {

@@ -17,6 +17,9 @@ struct ControllerSurface: View {
     @Binding var hideABXY: Bool
     @Binding var selectedButton: String?
     @Binding var selectedJoystick: String?
+    /// The frame the built-in layouts' controls take in the pane, before any vertical offset; nil
+    /// for a custom layout, which is never measured.
+    @Binding var controlsFrame: CGRect?
     var customControllerLayout: ((@escaping SubView, @escaping JoystickSubView, Bool) -> AnyView)?
 
     @AppStorage("On-ScreenControllerScale") private var controllerScale: Double = 1.0
@@ -34,6 +37,7 @@ struct ControllerSurface: View {
         hideABXY: Binding<Bool>,
         selectedButton: Binding<String?>,
         selectedJoystick: Binding<String?>,
+        controlsFrame: Binding<CGRect?>,
         customControllerLayout: ((@escaping SubView, @escaping JoystickSubView, Bool) -> AnyView)?
     ) {
         self.variant = variant
@@ -46,6 +50,7 @@ struct ControllerSurface: View {
         self._hideABXY = hideABXY
         self._selectedButton = selectedButton
         self._selectedJoystick = selectedJoystick
+        self._controlsFrame = controlsFrame
         self.customControllerLayout = customControllerLayout
     }
 
@@ -53,6 +58,7 @@ struct ControllerSurface: View {
         Group {
             if let customControllerLayout {
                 customControllerLayout(editableButton, editableJoystick, variant == .portrait)
+                    .onAppear { controlsFrame = nil }
             } else if variant == .portrait {
                 portraitLayout
             } else {
@@ -60,6 +66,15 @@ struct ControllerSurface: View {
             }
         }
         .padding()
+        .coordinateSpace(.named(Self.paneSpace))
+    }
+
+    private static let paneSpace = "ControllerSurfacePane"
+
+    private func measuringControls(_ controls: some View) -> some View {
+        controls.onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.paneSpace)) } action: {
+            controlsFrame = $0
+        }
     }
 
     private var portraitLayout: some View {
@@ -78,7 +93,7 @@ struct ControllerSurface: View {
         )
         return VStack {
             Spacer()
-            VStack(spacing: 20) {
+            measuringControls(VStack(spacing: 20) {
                 HStack(spacing: columnGap) {
                     VStack(spacing: 15) {
                         shoulderButtonsLeft
@@ -133,14 +148,14 @@ struct ControllerSurface: View {
                         }
                     }
                 }
-            }
+            })
         }
     }
 
     private var landscapeLayout: some View {
         VStack {
             Spacer()
-            HStack {
+            measuringControls(HStack {
                 VStack(spacing: 20) {
                     shoulderButtonsLeft
                     ZStack {
@@ -175,7 +190,7 @@ struct ControllerSurface: View {
                         }
                     }
                 }
-            }
+            })
         }
     }
 

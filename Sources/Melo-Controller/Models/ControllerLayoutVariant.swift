@@ -7,24 +7,30 @@ import SwiftUI
 
 /// Which arrangement of the on-screen controller is showing, decided only from the space the
 /// ``ControllerView`` is actually given. It never looks at the device, the screen or the window.
-enum ControllerLayoutVariant: String, CaseIterable {
+public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
     /// Compact arrangement: the two halves sit close together, with the center buttons underneath.
     case portrait
     /// Spread arrangement: one half at each side with the center buttons between them.
     case landscape
 
-    var title: LocalizedStringKey {
+    public var title: LocalizedStringKey {
         switch self {
         case .portrait: return "Portrait Layout"
         case .landscape: return "Landscape Layout"
         }
     }
 
-    var systemImage: String {
+    public var systemImage: String {
         switch self {
         case .portrait: return "iphone"
         case .landscape: return "iphone.landscape"
         }
+    }
+
+    /// The user default holding this arrangement's vertical offset in points (negative is up),
+    /// shared by every game.
+    public var verticalOffsetKey: String {
+        "On-ScreenControllerOffset-\(rawValue)"
     }
 
     /// Width of one half of the controller at scale 1 (the shoulder row and the stick).
