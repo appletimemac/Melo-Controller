@@ -48,6 +48,7 @@ public struct ControllerView: View {
     var controller: any Controller
     @AppStorage("On-ScreenControllerScale") private var controllerScale: Double = 1.0
     @AppStorage("stickButton") private var stickButton = false
+    @Environment(\.controllerKeepClearRegions) private var keepClearRegions
     @State private var hideDpad = false
     @State private var hideABXY = false
     @State private var selectedButton: String?
@@ -113,15 +114,21 @@ public struct ControllerView: View {
 
     public var body: some View {
         GeometryReader { proxy in
-            let variant = ControllerLayoutVariant(paneSize: proxy.size, controllerScale: CGFloat(controllerScale))
+            let clearance = FoldClearance(paneSize: proxy.size, regions: keepClearRegions)
+            let variant = ControllerLayoutVariant(
+                paneSize: proxy.size,
+                controllerScale: CGFloat(controllerScale),
+                stickButtons: stickButton,
+                foldWidth: clearance.centerFoldWidth
+            )
             ZStack {
                 Group {
                     if let customControllerLayout {
                         customControllerLayout(editableButton, editableJoystick, variant == .portrait)
                     } else if variant == .portrait {
-                        portraitLayout
+                        portraitLayout(clearance)
                     } else {
-                        landscapeLayout
+                        landscapeLayout(clearance)
                     }
                 }
                 .padding()
@@ -182,11 +189,24 @@ public struct ControllerView: View {
         }
     }
 
-    private var portraitLayout: some View {
-        VStack {
+    private func portraitLayout(_ clearance: FoldClearance) -> some View {
+        let scale = CGFloat(controllerScale)
+        let columnWidth = max(ControllerLayoutVariant.halfWidth, ControllerLayoutVariant.halfWidth * scale, 145 * scale)
+        let padding: CGFloat = 32
+        let columnGap = clearance.centeredGap(
+            base: 30,
+            limit: clearance.paneSize.width - padding - 2 * columnWidth
+        )
+        let bottomHalfWidth = stickButton ? 80 * scale + 32 : 35 * scale
+        let bottomGap = clearance.centeredGap(
+            base: 60,
+            extraMargin: 0.125 * 35 * scale,
+            limit: clearance.paneSize.width - padding - 2 * bottomHalfWidth
+        )
+        return VStack {
             Spacer()
             VStack(spacing: 20) {
-                HStack(spacing: 30) {
+                HStack(spacing: columnGap) {
                     VStack(spacing: 15) {
                         shoulderButtonsLeft
                         ZStack {
@@ -220,7 +240,7 @@ public struct ControllerView: View {
                 }
 
                 if stickButton {
-                    HStack(spacing: 60) {
+                    HStack(spacing: bottomGap) {
                         HStack {
                             editableButton(.leftStick).padding()
                             editableButton(.back)
@@ -231,7 +251,7 @@ public struct ControllerView: View {
                         }
                     }
                 } else {
-                    HStack(spacing: 60) {
+                    HStack(spacing: bottomGap) {
                         HStack {
                             editableButton(.back)
                         }
@@ -244,7 +264,7 @@ public struct ControllerView: View {
         }
     }
 
-    private var landscapeLayout: some View {
+    private func landscapeLayout(_ clearance: FoldClearance) -> some View {
         VStack {
             Spacer()
             HStack {
@@ -265,7 +285,7 @@ public struct ControllerView: View {
                 }
 
                 Spacer()
-                centerButtons
+                centerButtons(clearance)
                 Spacer()
 
                 VStack(spacing: 20) {
@@ -286,32 +306,34 @@ public struct ControllerView: View {
         }
     }
 
-    private var centerButtons: some View {
-        Group {
-            if stickButton {
-                VStack {
-                    HStack(spacing: 50) {
-                        editableButton(.leftStick).padding()
-                        Spacer()
-                        editableButton(.rightStick).padding()
-                    }
-                    .padding(.top, 30)
+    private func centerButtons(_ clearance: FoldClearance) -> some View {
+        // The buttons are drawn 1.25 times their frame, so the drawing reaches past the frame by this much.
+        let overhang = 0.125 * 35 * CGFloat(controllerScale)
+        return CenterClusterLayout(clearance: clearance.span(extraMargin: overhang)) {
+            centerLeadingButtons
+            centerTrailingButtons
+        }
+        .padding(.bottom, 20)
+    }
 
-                    HStack(spacing: 50) {
-                        editableButton(.back)
-                        Spacer()
-                        editableButton(.start)
-                    }
-                }
-                .padding(.bottom, 20)
-            } else {
-                HStack(spacing: 50) {
-                    editableButton(.back)
-                    Spacer()
-                    editableButton(.start)
-                }
-                .padding(.bottom, 20)
+    // Minus (and L3) belong to the left Joy-Con, Plus (and R3) to the right one.
+    private var centerLeadingButtons: some View {
+        VStack(alignment: .leading) {
+            if stickButton {
+                HStack { editableButton(.leftStick).padding() }
+                    .padding(.top, 30)
             }
+            HStack { editableButton(.back) }
+        }
+    }
+
+    private var centerTrailingButtons: some View {
+        VStack(alignment: .trailing) {
+            if stickButton {
+                HStack { editableButton(.rightStick).padding() }
+                    .padding(.top, 30)
+            }
+            HStack { editableButton(.start) }
         }
     }
 
