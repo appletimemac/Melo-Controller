@@ -10,6 +10,7 @@ import SwiftUI
 struct CopyLayoutView: View {
     let targetGameId: String?
     @Binding var layout: LayoutConfig
+    var variant: ControllerLayoutVariant
     @Environment(\.presentationMode) var presentationMode
     @State private var availableLayouts: [String] = []
     
@@ -66,9 +67,9 @@ struct CopyLayoutView: View {
     }
     
     private func copyLayout(from sourceGameId: String?) {
-        let sourceLayout = LayoutManager.shared.load(for: sourceGameId)
+        let sourceLayout = LayoutManager.shared.load(for: sourceGameId, variant: variant)
         layout = sourceLayout
-        LayoutManager.shared.save(layout, for: targetGameId)
+        LayoutManager.shared.save(layout, for: targetGameId, variant: variant)
         presentationMode.wrappedValue.dismiss()
     }
 }

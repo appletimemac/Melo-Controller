@@ -31,6 +31,7 @@ struct LayoutEditorView: View {
     @Binding var isEditing: Bool
     @Binding var showEditControls: Bool
     @Binding var layout: LayoutConfig
+    var variant: ControllerLayoutVariant
     
     @Binding var selectedButton: String?
     @Binding var selectedJoystick: String?
@@ -58,7 +59,7 @@ struct LayoutEditorView: View {
     }
     
     private func saveLayout() {
-        LayoutManager.shared.save(layout, for: gameId)
+        LayoutManager.shared.save(layout, for: gameId, variant: variant)
     }
     
     private func clearSelection() {
@@ -93,13 +94,13 @@ struct LayoutEditorView: View {
             syncDpadHandler()
         }
         .sheet(isPresented: $showingLayoutOptions) {
-            LayoutOptionsView(gameId: gameId, gameName: gameName, layout: $layout)
+            LayoutOptionsView(gameId: gameId, gameName: gameName, layout: $layout, variant: variant)
         }
         .alert("Reset This Layout?", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Reset", role: .destructive) {
                 layout = LayoutConfig()
-                LayoutManager.shared.reset(for: gameId)
+                LayoutManager.shared.reset(for: gameId, variant: variant)
                 clearSelection()
             }
         } message: {

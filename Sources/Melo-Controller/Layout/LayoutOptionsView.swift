@@ -16,6 +16,7 @@ struct LayoutOptionsView: View {
     let gameId: String?
     var gameName: String? = nil
     @Binding var layout: LayoutConfig
+    var variant: ControllerLayoutVariant
     @Environment(\.presentationMode) var presentationMode
     
     @State private var showingResetAlert = false
@@ -41,7 +42,7 @@ struct LayoutOptionsView: View {
                             Text(gameName ?? gameId)
                                 .font(.subheadline)
                             Spacer()
-                            if LayoutManager.shared.hasCustomLayout(for: gameId) {
+                            if LayoutManager.shared.hasCustomLayout(for: gameId, variant: variant) {
                                 HStack {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(.green)
@@ -115,7 +116,7 @@ struct LayoutOptionsView: View {
                     }
                     
                     Button(action: {
-                        layout = LayoutManager.shared.load(for: nil)
+                        layout = LayoutManager.shared.load(for: nil, variant: variant)
                     }) {
                         HStack {
                             Image(systemName: "arrow.clockwise")
@@ -155,8 +156,8 @@ struct LayoutOptionsView: View {
         .alert("Delete Custom Layout", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
-                LayoutManager.shared.reset(for: gameId)
-                layout = LayoutManager.shared.load(for: gameId)
+                LayoutManager.shared.reset(for: gameId, variant: variant)
+                layout = LayoutManager.shared.load(for: gameId, variant: variant)
             }
         } message: {
             Text("This will delete the custom layout for this game and revert to the default layout.")
@@ -167,7 +168,7 @@ struct LayoutOptionsView: View {
             Text(alertMessage)
         }
         .sheet(isPresented: $showingCopySheet) {
-            CopyLayoutView(targetGameId: gameId, layout: $layout)
+            CopyLayoutView(targetGameId: gameId, layout: $layout, variant: variant)
         }
     }
     
@@ -177,7 +178,7 @@ struct LayoutOptionsView: View {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(layout)
             
-            let fileName = LayoutManager.shared.exportFileName(for: gameId)
+            let fileName = LayoutManager.shared.exportFileName(for: gameId, variant: variant)
             let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try data.write(to: tmpURL, options: .atomic)
             exportItem = LayoutExportItem(url: tmpURL)
@@ -205,7 +206,7 @@ struct LayoutOptionsView: View {
             
             do {
                 let data = try Data(contentsOf: url)
-                let imported = try LayoutManager.shared.importLayout(from: data, for: gameId)
+                let imported = try LayoutManager.shared.importLayout(from: data, for: gameId, variant: variant)
                 layout = imported
                 alertTitle = "Import Successful"
                 alertMessage = "The layout has been applied\(gameId.map { " to \($0)" } ?? "")."
