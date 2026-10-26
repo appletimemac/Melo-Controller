@@ -20,6 +20,7 @@ public struct ButtonView: View {
     @AppStorage("buttonSlide") private var buttonSlide = true
     @AppStorage("On-ScreenControllerScale") var controllerScale: Double = 1.0
     @Environment(\.presentationMode) var presentationMode
+    private var glass = ControllerGlassPreference()
     
     @State private var isPressed = false
     @State private var toggleState = false
@@ -45,16 +46,26 @@ public struct ButtonView: View {
         Circle()
             .foregroundStyle(.clear.opacity(0))
             .overlay {
-                Image(systemName: buttonConfig.iconName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: size.width, height: size.height)
-                    .foregroundStyle(.white)
-                    .opacity(isPressed ? 0.6 : 0.8)
-                    .allowsHitTesting(false)
+                if !glass.isActive {
+                    Image(systemName: buttonConfig.iconName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: size.width, height: size.height)
+                        .foregroundStyle(.white)
+                        .opacity(isPressed ? 0.6 : 0.8)
+                        .allowsHitTesting(false)
+                }
             }
             .frame(width: size.width, height: size.height)
-            .background(buttonBackground)
+            .background {
+                if glass.isActive {
+                    glassBackground
+                } else {
+                    buttonBackground
+                }
+            }
+            .scaleEffect(glass.isActive && isPressed ? 0.92 : 1)
+            .animation(glass.isActive ? .snappy(duration: 0.12) : nil, value: isPressed)
             .onAppear {
                 size = calculateButtonSize()
             }
@@ -82,6 +93,38 @@ public struct ButtonView: View {
                 }
             }
             .opacity(opacity)
+    }
+    
+    @ViewBuilder
+    private var glassBackground: some View {
+        let width = size.width * 1.25
+        let height = size.height * 1.25
+        if button.isTrigger {
+            ControllerGlassSurface(shape: Capsule(style: .continuous), isPressed: isPressed) { glassGlyph }
+                .frame(width: width, height: height)
+        } else {
+            ControllerGlassSurface(shape: Circle(), isPressed: isPressed) { glassGlyph }
+                .frame(width: width, height: height)
+        }
+    }
+    
+    private var glassGlyph: some View {
+        Image(systemName: glassGlyphName)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size.width * 0.82, height: size.height * 0.82)
+            .fontWeight(.bold)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    /// Glass shows the outline variant of a symbol (`a.circle` for `a.circle.fill`) at a size that leaves
+    /// a rim of glass visible around it.
+    private var glassGlyphName: String {
+        let name = buttonConfig.iconName
+        guard name.hasSuffix(".fill") else { return name }
+        let outline = String(name.dropLast(".fill".count))
+        return UIImage(systemName: outline) != nil ? outline : name
     }
     
     private var buttonBackground: some View {

@@ -19,26 +19,45 @@ struct EditableJoystickView: View {
     @GestureState private var dragOffset = CGSize.zero
     @AppStorage("On-ScreenControllerScale") var controllerScale: Double = 1.0
     
-    private var editorPlaceholder: some View {
-        ZStack {
-            Circle()
-                .fill(Color.gray.opacity(0.22))
-            
-            Circle()
-                .strokeBorder(
-                    Color.white.opacity(0.3),
-                    style: StrokeStyle(lineWidth: 2, dash: [7, 6])
-                )
-            
-            VStack(spacing: 4) {
-                Image(systemName: iscool ? "r.joystick.fill" : "l.joystick.fill")
-                    .font(.system(size: 30, weight: .semibold))
-                Text(iscool ? "Right Stick" : "Left Stick")
-                    .font(.caption2.weight(.semibold))
-            }
-            .foregroundColor(.white.opacity(0.8))
+    private var glass = ControllerGlassPreference()
+    
+    private var placeholderLabel: some View {
+        VStack(spacing: 4) {
+            Image(systemName: iscool ? "r.joystick.fill" : "l.joystick.fill")
+                .font(.title.weight(.semibold))
+            Text(iscool ? "Right Stick" : "Left Stick")
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
-        .frame(width: 160, height: 160)
+        .foregroundColor(.white.opacity(0.8))
+    }
+    
+    private var placeholderOutline: some View {
+        Circle()
+            .strokeBorder(
+                Color.white.opacity(0.3),
+                style: StrokeStyle(lineWidth: 2, dash: [7, 6])
+            )
+    }
+    
+    @ViewBuilder
+    private var editorPlaceholder: some View {
+        if glass.isActive {
+            ControllerGlassSurface(shape: Circle()) { placeholderLabel }
+                .overlay { placeholderOutline }
+                .frame(width: 160, height: 160)
+        } else {
+            ZStack {
+                Circle()
+                    .fill(Color.gray.opacity(0.22))
+                
+                placeholderOutline
+                
+                placeholderLabel
+            }
+            .frame(width: 160, height: 160)
+        }
     }
     
     var body: some View {

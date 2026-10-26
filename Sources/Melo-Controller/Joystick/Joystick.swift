@@ -13,7 +13,12 @@ import SwiftUI
 final class JoystickView: UIView {
     var right: Bool = true
     var background: Bool = false {
-        didSet { if activeTouch == nil { backgroundView.alpha = background ? 1 : 0 } }
+        didSet { if activeTouch == nil { setBaseVisible(background) } }
+    }
+    /// Draws the base and the knob as clear Liquid Glass instead of gray fills. Touch handling, dead zone
+    /// and spring return are the same either way.
+    var usesGlass: Bool = false {
+        didSet { if usesGlass != oldValue { applyAppearance() } }
     }
     var sensitivity: CGFloat = 1.2
         
@@ -31,6 +36,13 @@ final class JoystickView: UIView {
     private let backgroundView        = UIView()
     private let joystickView          = UIView()
     private let joystickBackgroundView = UIView()
+    
+    // Glass mode: the dimming and the glass effect live inside the classic base and knob views, which keep
+    // doing all the positioning and scaling.
+    private let baseDimView = UIView()
+    private let baseGlassView = UIVisualEffectView(effect: nil)
+    private let knobDimView = UIView()
+    private let knobGlassView = UIVisualEffectView(effect: nil)
     
     private var offset: CGPoint = .zero
     
@@ -74,6 +86,21 @@ final class JoystickView: UIView {
         joystickView.layer.shadowOpacity = 0.18
         joystickView.layer.shadowOffset  = CGSize(width: 0, height: 2)
         joystickView.layer.shadowRadius  = 4
+        
+        backgroundView.addSubview(baseDimView)
+        backgroundView.addSubview(baseGlassView)
+        joystickView.addSubview(knobDimView)
+        joystickView.addSubview(knobGlassView)
+        for view in [baseDimView, knobDimView] {
+            view.backgroundColor = UIColor.black.withAlphaComponent(0.25)
+        }
+        for view in [baseGlassView, knobGlassView] {
+            view.cornerConfiguration = .capsule()
+        }
+        for view in [baseDimView, baseGlassView, knobDimView, knobGlassView] {
+            view.isUserInteractionEnabled = false
+            view.isHidden = true
+        }
 
         isMultipleTouchEnabled = true
 
@@ -103,6 +130,13 @@ final class JoystickView: UIView {
             height: joystickSize
         )
         joystickView.layer.cornerRadius = joystickSize / 2
+        
+        baseDimView.frame = backgroundView.bounds
+        baseDimView.layer.cornerRadius = size / 2
+        baseGlassView.frame = backgroundView.bounds
+        knobDimView.frame = joystickView.bounds
+        knobDimView.layer.cornerRadius = joystickSize / 2
+        knobGlassView.frame = joystickView.bounds
         
         if activeTouch == nil && springAnimator == nil {
             placeAtCenter()
@@ -163,6 +197,7 @@ final class JoystickView: UIView {
                        usingSpringWithDamping: 0.6, initialSpringVelocity: 1) {
             self.joystickView.transform = CGAffineTransform(scaleX: 1.12, y: 1.12)
             self.joystickBackgroundView.transform = CGAffineTransform(scaleX: 1.08, y: 1.08)
+            if self.usesGlass { self.knobGlassView.effect = Self.glassEffect(tint: 0.4) }
         }
         onActiveChanged?(true)
     }
@@ -172,6 +207,7 @@ final class JoystickView: UIView {
         UIView.animate(withDuration: 0.15) {
             self.joystickView.transform          = .identity
             self.joystickBackgroundView.transform = .identity
+            if self.usesGlass { self.knobGlassView.effect = Self.glassEffect(tint: 0.18) }
         }
         
         animateBackground(show: false)
@@ -258,8 +294,48 @@ final class JoystickView: UIView {
     private func animateBackground(show: Bool) {
         if !background {
             UIView.animate(withDuration: 0.15) {
-                self.backgroundView.alpha = show ? 1 : 0
+                self.setBaseVisible(show)
             }
+        }
+    }
+    
+    /// Shows or hides the base. Glass appears and disappears through its effect, not through alpha.
+    private func setBaseVisible(_ visible: Bool) {
+        if usesGlass {
+            baseGlassView.effect = visible ? Self.glassEffect(tint: 0) : nil
+            baseDimView.alpha = visible ? 1 : 0
+        } else {
+            backgroundView.alpha = visible ? 1 : 0
+        }
+    }
+    
+    private static func glassEffect(tint: CGFloat) -> UIGlassEffect {
+        let effect = UIGlassEffect(style: .clear)
+        if tint > 0 { effect.tintColor = UIColor.white.withAlphaComponent(tint) }
+        return effect
+    }
+    
+    private func applyAppearance() {
+        let visible = background || activeTouch != nil
+        for view in [baseDimView, baseGlassView, knobDimView, knobGlassView] {
+            view.isHidden = !usesGlass
+        }
+        joystickBackgroundView.isHidden = usesGlass
+        
+        if usesGlass {
+            backgroundView.backgroundColor = .clear
+            backgroundView.alpha = 1
+            joystickView.backgroundColor = .clear
+            joystickView.layer.shadowOpacity = 0
+            setBaseVisible(visible)
+            knobGlassView.effect = Self.glassEffect(tint: activeTouch != nil ? 0.4 : 0.18)
+        } else {
+            baseGlassView.effect = nil
+            knobGlassView.effect = nil
+            backgroundView.backgroundColor = UIColor.gray.withAlphaComponent(0.4)
+            joystickView.backgroundColor = UIColor.white.withAlphaComponent(0.5)
+            joystickView.layer.shadowOpacity = 0.18
+            setBaseVisible(visible)
         }
     }
 }

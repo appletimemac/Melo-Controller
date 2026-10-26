@@ -12,6 +12,7 @@ struct JoystickViewRepresentable: UIViewRepresentable {
     var right: Bool
     @Binding var showBackground: Bool
     var controller: any Controller
+    private var glass = ControllerGlassPreference()
     
     init(controller: any Controller, right: Bool, showBackground: Binding<Bool>) {
         self.right = right
@@ -34,6 +35,7 @@ struct JoystickViewRepresentable: UIViewRepresentable {
         let right = right
         let showBackground = _showBackground
         view.right = right
+        view.usesGlass = glass.isActive
         
         view.onPositionChanged = { newPosition in
             controller.joystickMoved(position: newPosition, right: right)

@@ -49,6 +49,7 @@ public struct ControllerView: View {
     @AppStorage("On-ScreenControllerScale") private var controllerScale: Double = 1.0
     @AppStorage("stickButton") private var stickButton = false
     @Environment(\.controllerKeepClearRegions) private var keepClearRegions
+    private var glass = ControllerGlassPreference()
     @State private var hideDpad = false
     @State private var hideABXY = false
     @State private var selectedButton: String?
@@ -309,9 +310,11 @@ public struct ControllerView: View {
     private func centerButtons(_ clearance: FoldClearance) -> some View {
         // The buttons are drawn 1.25 times their frame, so the drawing reaches past the frame by this much.
         let overhang = 0.125 * 35 * CGFloat(controllerScale)
-        return CenterClusterLayout(clearance: clearance.span(extraMargin: overhang)) {
-            centerLeadingButtons
-            centerTrailingButtons
+        return glassCluster {
+            CenterClusterLayout(clearance: clearance.span(extraMargin: overhang)) {
+                centerLeadingButtons
+                centerTrailingButtons
+            }
         }
         .padding(.bottom, 20)
     }
@@ -340,48 +343,67 @@ public struct ControllerView: View {
     // MARK: - Button Groups
 
     private var shoulderButtonsLeft: some View {
-        HStack(spacing: 20) {
-            editableButton(.leftTrigger)
-            editableButton(.leftShoulder)
+        glassCluster {
+            HStack(spacing: 20) {
+                editableButton(.leftTrigger)
+                editableButton(.leftShoulder)
+            }
         }
         .frame(width: 160 * CGFloat(controllerScale), height: 20 * CGFloat(controllerScale))
     }
 
     private var shoulderButtonsRight: some View {
-        HStack(spacing: 20) {
-            editableButton(.rightShoulder)
-            editableButton(.rightTrigger)
+        glassCluster {
+            HStack(spacing: 20) {
+                editableButton(.rightShoulder)
+                editableButton(.rightTrigger)
+            }
         }
         .frame(width: 160 * CGFloat(controllerScale), height: 20 * CGFloat(controllerScale))
     }
 
     private var dpadView: some View {
-        VStack(spacing: 7) {
-            editableButton(.dPadUp)
-            HStack(spacing: 22) {
-                editableButton(.dPadLeft)
-                Spacer(minLength: 22)
-                editableButton(.dPadRight)
+        glassCluster {
+            VStack(spacing: 7) {
+                editableButton(.dPadUp)
+                HStack(spacing: 22) {
+                    editableButton(.dPadLeft)
+                    Spacer(minLength: 22)
+                    editableButton(.dPadRight)
+                }
+                editableButton(.dPadDown)
             }
-            editableButton(.dPadDown)
         }
         .frame(width: 145 * CGFloat(controllerScale), height: 145 * CGFloat(controllerScale))
     }
 
     private var abxyView: some View {
-        VStack(spacing: 7) {
-            editableButton(.X)
-            HStack(spacing: 22) {
-                editableButton(.Y)
-                Spacer(minLength: 22)
-                editableButton(.A)
+        glassCluster {
+            VStack(spacing: 7) {
+                editableButton(.X)
+                HStack(spacing: 22) {
+                    editableButton(.Y)
+                    Spacer(minLength: 22)
+                    editableButton(.A)
+                }
+                editableButton(.B)
             }
-            editableButton(.B)
         }
         .frame(width: 145 * CGFloat(controllerScale), height: 145 * CGFloat(controllerScale))
     }
 
     // MARK: - Helper Methods
+
+    /// Glass shapes that sit next to each other render together in one container, so they share a sampling
+    /// pass and look consistent. Spacing 0 keeps neighbouring buttons from merging into one blob.
+    @ViewBuilder
+    private func glassCluster<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        if glass.isActive {
+            GlassEffectContainer(spacing: 0) { content() }
+        } else {
+            content()
+        }
+    }
 
     private func editableButton(_ button: VirtualControllerButton) -> AnyView {
         .init(
