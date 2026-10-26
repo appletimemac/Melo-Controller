@@ -46,14 +46,12 @@ public struct ControllerView: View {
     var gameId: String?
     var gameName: String?
     var controller: any Controller
-    @StateObject var controllerHandler = ControllerHandler()
     @AppStorage("On-ScreenControllerScale") private var controllerScale: Double = 1.0
     @AppStorage("stickButton") private var stickButton = false
     @State private var hideDpad = false
     @State private var hideABXY = false
     @State private var selectedButton: String?
     @State private var selectedJoystick: String?
-    @Environment(\.verticalSizeClass) var verticalSizeClass
     @State private var showEditControls = true
     @State var isEditing: Bool = false
     private var isEditingInput: Bool
@@ -114,68 +112,64 @@ public struct ControllerView: View {
     @State private var layout: LayoutConfig = LayoutConfig()
 
     public var body: some View {
-        ZStack {
-            Group {
-                let isPad = UIDevice.current.userInterfaceIdiom == .pad
-                if let customControllerLayout {
-                    customControllerLayout(editableButton, editableJoystick, controllerHandler.isPortrait)
-                } else {
-                    if controllerHandler.isPortrait && !isPad {
+        GeometryReader { proxy in
+            let variant = ControllerLayoutVariant(paneSize: proxy.size, controllerScale: CGFloat(controllerScale))
+            ZStack {
+                Group {
+                    if let customControllerLayout {
+                        customControllerLayout(editableButton, editableJoystick, variant == .portrait)
+                    } else if variant == .portrait {
                         portraitLayout
                     } else {
                         landscapeLayout
                     }
                 }
-            }
-            .padding()
-            .onChange(of: verticalSizeClass) { _ in controllerHandler.updateOrientation() }
-            .onChange(of: isEditingInput) { isEditing = $0 }
-            .onAppear {
-                controllerHandler.updateOrientation()
-                loadLayout()
-            }
+                .padding()
+                .onChange(of: isEditingInput) { _, newValue in isEditing = newValue }
+                .onAppear { loadLayout() }
 
-            // Edit Controls
-            if isEditing {
-                if showEditControls {
-                    LayoutEditorView(
-                        hideDpad: $hideDpad,
-                        hideABXY: $hideABXY,
-                        isEditing: $isEditing,
-                        showEditControls: $showEditControls,
-                        layout: $layout,
-                        selectedButton: $selectedButton,
-                        selectedJoystick: $selectedJoystick,
-                        gameId: gameId,
-                        gameName: gameName
-                    )
-                    .zIndex(1)
-                } else {
-                    VStack {
-                        HStack {
-                            Button(action: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showEditControls = true
+                // Edit Controls
+                if isEditing {
+                    if showEditControls {
+                        LayoutEditorView(
+                            hideDpad: $hideDpad,
+                            hideABXY: $hideABXY,
+                            isEditing: $isEditing,
+                            showEditControls: $showEditControls,
+                            layout: $layout,
+                            selectedButton: $selectedButton,
+                            selectedJoystick: $selectedJoystick,
+                            gameId: gameId,
+                            gameName: gameName
+                        )
+                        .zIndex(1)
+                    } else {
+                        VStack {
+                            HStack {
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showEditControls = true
+                                    }
+                                }) {
+                                    Image(systemName: "eye")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                        .padding(13)
+                                        .background(.ultraThinMaterial, in: Circle())
                                 }
-                            }) {
-                                Image(systemName: "eye")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundColor(.primary)
-                                    .padding(13)
-                                    .background(.ultraThinMaterial, in: Circle())
+                                .buttonStyle(.plain)
+                                .padding(12)
+
+                                Spacer()
                             }
-                            .buttonStyle(.plain)
-                            .padding(12)
 
                             Spacer()
                         }
-
-                        Spacer()
                     }
                 }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .environmentObject(controllerHandler)
     }
 
     private func loadLayout() {

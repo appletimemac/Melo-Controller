@@ -38,7 +38,7 @@ struct LayoutEditorView: View {
     @State private var showingLayoutOptions = false
     @State private var showingResetAlert = false
     
-    @Environment(\.verticalSizeClass) var verticalSizeClass
+    @State private var isWide = false
     @Environment(\.dismiss) var dismiss
     
     var gameId: String?
@@ -48,8 +48,6 @@ struct LayoutEditorView: View {
         guard let gameId = gameId else { return nil }
         return gameName ?? gameId
     }
-    
-    private var isWide: Bool { verticalSizeClass == .compact || UIDevice.current.userInterfaceIdiom == .pad }
     
     private var selectionKey: String {
         "\(selectedButton ?? "-")|\(selectedJoystick ?? "-")"
@@ -86,11 +84,12 @@ struct LayoutEditorView: View {
             Spacer(minLength: 0)
         }
         .padding(12)
+        .onGeometryChange(for: Bool.self) { $0.size.width >= 520 } action: { isWide = $0 }
         .animation(.spring(response: 0.34, dampingFraction: 0.86), value: selectionKey)
         .onAppear {
             syncDpadHandler()
         }
-        .onChange(of: gameId) { _ in
+        .onChange(of: gameId) {
             syncDpadHandler()
         }
         .sheet(isPresented: $showingLayoutOptions) {

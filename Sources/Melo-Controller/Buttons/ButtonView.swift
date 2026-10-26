@@ -65,7 +65,7 @@ public struct ButtonView: View {
                     sendRelease()
                 }
             }
-            .onChange(of: controllerScale) { _ in
+            .onChange(of: controllerScale) {
                 size = calculateButtonSize()
             }
             .overlay {
@@ -186,12 +186,11 @@ public struct ButtonView: View {
             baseHeight = 45
         }
         
-        let deviceMultiplier = UIDevice.current.userInterfaceIdiom == .pad ? 1.2 : 1.0
         let scaleMultiplier = CGFloat(controllerScale)
         
         return CGSize(
-            width: baseWidth * deviceMultiplier * scaleMultiplier,
-            height: baseHeight * deviceMultiplier * scaleMultiplier
+            width: baseWidth * scaleMultiplier,
+            height: baseHeight * scaleMultiplier
         )
     }
     
