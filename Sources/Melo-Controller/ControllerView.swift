@@ -23,9 +23,16 @@ public typealias JoystickSubView = (String, Bool, Binding<Bool>) -> AnyView
 
 /// A full on-screen nintendo-style game controller  as a SwiftUI view.
 ///
-/// `ControllerView` handles orientation changes, layout persistence, and edit mode.
-/// By default it renders a standard portrait or landscape layout automatically.
+/// `ControllerView` handles layout persistence and edit mode. By default it renders a compact (portrait)
+/// or a spread (landscape) layout, chosen from the space the view itself is given rather than from the
+/// device or the window, so it works in any pane, on any display, in any pose.
 /// Pass a `customControllerLayout` closure to provide your own arrangement of buttons and sticks.
+///
+/// - Controls draw as Liquid Glass unless the `On-ScreenControllerGlass` user default is `false` or
+///   Reduce Transparency is on. `On-ScreenControllerScale` scales every control.
+/// - Rectangles in ``EnvironmentValues/controllerKeepClearRegions`` (such as a fold) are kept clear of
+///   the center buttons.
+/// - Layouts are stored per game and per variant, and the editor edits the variant that is showing.
 ///
 /// **Basic usage (default layout):**
 /// ```swift
@@ -62,7 +69,8 @@ public struct ControllerView: View {
     /// The closure receives:
     /// - A ``SubView`` factory:  call it with any ``VirtualControllerButton`` to get a fully wired, editable button view.
     /// - A ``JoystickSubView`` factory: call it with an ID, `iscool`, and a `showBackground` binding to get a wired joystick.
-    /// - A `Bool` indicating whether the device is currently in portrait orientation.
+    /// - A `Bool` that is `true` while the compact (portrait) arrangement is showing, decided from the
+    ///   size of the view itself.
     ///
     /// Set to `nil` (the default) to use the automatic portrait/landscape layout.
     @State var customControllerLayout: ((@escaping SubView, @escaping JoystickSubView, Bool) -> AnyView)? = nil
@@ -79,7 +87,7 @@ public struct ControllerView: View {
     ///     instead of `gameId`. The layout is still saved under `gameId`.
     ///   - customControllerLayout: A `@ViewBuilder` closure that composes your own
     ///     controller UI using the provided ``SubView`` and ``JoystickSubView`` factories.
-    ///     The `Bool` argument is `true` when the device is in portrait orientation,
+    ///     The `Bool` argument is `true` while the compact (portrait) arrangement is showing,
     ///     which you can use to switch between layouts.
     public init<V: View>(
         controller: any Controller,

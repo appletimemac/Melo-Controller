@@ -65,6 +65,9 @@ struct EditableJoystickView: View {
     var body: some View {
         if isEditing {
             editorPlaceholder
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(StickAccessibility.name(right: iscool))
+                .accessibilityAddTraits(selectedJoystick == id ? [.isButton, .isSelected] : .isButton)
                 .opacity(layout.joysticks[id]?.hidden ?? false ? 0.35 : 1)
                 .editorSelectionRing(isSelected: selectedJoystick == id, tint: .green)
                 .scaleEffect(

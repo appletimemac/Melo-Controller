@@ -24,6 +24,11 @@ final class JoystickView: UIView {
         
     var deadZone: CGFloat = 0.08
     
+    override var accessibilityLabel: String? {
+        get { StickAccessibility.name(right: right) }
+        set {}
+    }
+    
     private var dragDiameter: CGFloat { bounds.width > 0 ? bounds.width : 160 }
     
     private var joystickSize: CGFloat { dragDiameter * 0.2 }
@@ -103,6 +108,8 @@ final class JoystickView: UIView {
         }
 
         isMultipleTouchEnabled = true
+        isAccessibilityElement = true
+        accessibilityTraits = .allowsDirectInteraction
 
         edgeImpact.prepare()
     }

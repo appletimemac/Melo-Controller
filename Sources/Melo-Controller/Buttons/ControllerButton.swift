@@ -132,6 +132,9 @@ final class ControllerTouchView: UIView {
         backgroundColor = .clear
         isUserInteractionEnabled = true
         isMultipleTouchEnabled = true
+        isAccessibilityElement = true
+        // Direct interaction lets a VoiceOver user press and slide across the controls like anyone else.
+        accessibilityTraits = [.button, .allowsDirectInteraction]
     }
     
     deinit {
@@ -207,6 +210,7 @@ struct ControllerUIButtonViewRepresentable: UIViewRepresentable {
     var isCircular: Bool = true
     var slideEnabled: Bool = true
     var acceptsSlide: Bool = true
+    var accessibilityName: String
     
     func makeUIView(context: Context) -> ControllerTouchView {
         let view = ControllerTouchView(frame: .zero)
@@ -224,5 +228,6 @@ struct ControllerUIButtonViewRepresentable: UIViewRepresentable {
         view.isCircular = isCircular
         view.slideEnabled = slideEnabled
         view.acceptsSlide = acceptsSlide
+        view.accessibilityLabel = accessibilityName
     }
 }

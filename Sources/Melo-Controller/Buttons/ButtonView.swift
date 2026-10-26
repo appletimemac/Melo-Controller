@@ -78,6 +78,9 @@ public struct ButtonView: View {
             .onChange(of: controllerScale) {
                 size = calculateButtonSize()
             }
+            // With touch handling on, the UIKit touch view is the accessibility element and carries the label.
+            .accessibilityHidden(!disabled)
+            .accessibilityLabel(button.accessibilityName)
             .overlay {
                 if !disabled {
                     ControllerUIButtonViewRepresentable(
@@ -85,7 +88,8 @@ public struct ButtonView: View {
                         onRelease: handleButtonRelease,
                         isCircular: !button.isTrigger,
                         slideEnabled: buttonSlide && !istoggle,
-                        acceptsSlide: buttonSlide && !istoggle
+                        acceptsSlide: buttonSlide && !istoggle,
+                        accessibilityName: button.accessibilityName
                     )
                     .allowsHitTesting(true)
                     .frame(width: size.width * 1.25, height: size.height * 1.25)

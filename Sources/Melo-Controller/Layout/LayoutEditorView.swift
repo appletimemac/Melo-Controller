@@ -501,7 +501,7 @@ struct EditorSliderRow: View {
             HStack(spacing: 12) {
                 EditorStepperButton(icon: "minus", label: "Decrease") { nudge(-step) }
                 
-                Slider(value: $value, in: range, step: step)
+                Slider(value: $value, in: range, step: step) { Text(title) }
                 
                 EditorStepperButton(icon: "plus", label: "Increase") { nudge(step) }
             }

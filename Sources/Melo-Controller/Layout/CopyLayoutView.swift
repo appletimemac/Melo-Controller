@@ -91,6 +91,7 @@ struct EditableButtonView: View {
             if isEditing {
                 ButtonView(controller: controller, disabled: true, button: button)
                     .opacity(layout.buttons[button.id]?.hidden ?? false ? 0.35 : 1)
+                    .accessibilityAddTraits(selectedButton == button.id ? [.isButton, .isSelected] : .isButton)
                     .editorSelectionRing(isSelected: selectedButton == button.id, isCircular: !button.isTrigger)
                     .scaleEffect((layout.buttons[button.id]?.scale ?? 1.0) * (selectedButton == button.id ? 1.06 : 1.0))
                     .offset(
