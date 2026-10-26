@@ -163,7 +163,8 @@ public struct ControllerView: View {
                             selectedButton: $selectedButton,
                             selectedJoystick: $selectedJoystick,
                             gameId: gameId,
-                            gameName: gameName
+                            gameName: gameName,
+                            onReset: { layoutWasReset(variant) }
                         )
                         .zIndex(1)
                     } else {
@@ -190,9 +191,10 @@ public struct ControllerView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            .onChange(of: variant) { oldVariant, _ in
+            .onChange(of: variant) { oldVariant, newVariant in
                 // Rotating or folding in the editor must not lose what was changed in the variant being left.
                 if isEditing { saveIfEdited(oldVariant) }
+                reloadIfUnedited(newVariant)
             }
         }
     }
@@ -213,6 +215,23 @@ public struct ControllerView: View {
         }
         layouts = loaded
         savedLayouts = loaded
+    }
+
+    /// Reset and Delete remove a variant's file. What the editor now shows is that variant's saved
+    /// state, and a variant that was showing a layout inherited from the removed file re-resolves
+    /// it, so a later save cannot write the removed layout back.
+    private func layoutWasReset(_ variant: ControllerLayoutVariant) {
+        savedLayouts[variant] = layouts[variant]
+        for other in ControllerLayoutVariant.allCases where other != variant {
+            reloadIfUnedited(other)
+        }
+    }
+
+    private func reloadIfUnedited(_ variant: ControllerLayoutVariant) {
+        guard layouts[variant] == savedLayouts[variant] else { return }
+        let fresh = LayoutManager.shared.load(for: gameId, variant: variant)
+        layouts[variant] = fresh
+        savedLayouts[variant] = fresh
     }
 
     private func saveIfEdited(_ variant: ControllerLayoutVariant) {

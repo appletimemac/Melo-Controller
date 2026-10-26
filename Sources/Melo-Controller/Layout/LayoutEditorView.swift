@@ -43,6 +43,8 @@ struct LayoutEditorView: View {
     
     var gameId: String?
     var gameName: String?
+    /// Called after Reset or Delete removed this variant's saved file.
+    var onReset: () -> Void = {}
     
     private var gameTitle: String? {
         guard let gameId = gameId else { return nil }
@@ -107,13 +109,14 @@ struct LayoutEditorView: View {
             syncDpadHandler()
         }
         .sheet(isPresented: $showingLayoutOptions) {
-            LayoutOptionsView(gameId: gameId, gameName: gameName, layout: $layout, variant: variant)
+            LayoutOptionsView(gameId: gameId, gameName: gameName, layout: $layout, variant: variant, onReset: onReset)
         }
         .alert("Reset This Layout?", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Reset", role: .destructive) {
                 layout = LayoutConfig()
                 LayoutManager.shared.reset(for: gameId, variant: variant)
+                onReset()
                 clearSelection()
             }
         } message: {

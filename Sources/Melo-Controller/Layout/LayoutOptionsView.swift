@@ -17,6 +17,7 @@ struct LayoutOptionsView: View {
     var gameName: String? = nil
     @Binding var layout: LayoutConfig
     var variant: ControllerLayoutVariant
+    var onReset: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     
     @State private var showingResetAlert = false
@@ -115,6 +116,7 @@ struct LayoutOptionsView: View {
             Button("Delete", role: .destructive) {
                 LayoutManager.shared.reset(for: gameId, variant: variant)
                 layout = LayoutManager.shared.load(for: gameId, variant: variant)
+                onReset()
             }
         } message: {
             Text("This will delete the custom layout for this game and revert to the default layout.")
