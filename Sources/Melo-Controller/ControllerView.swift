@@ -221,7 +221,10 @@ public struct ControllerView: View {
     /// state, and a variant that was showing a layout inherited from the removed file re-resolves
     /// it, so a later save cannot write the removed layout back.
     private func layoutWasReset(_ variant: ControllerLayoutVariant) {
-        savedLayouts[variant] = layouts[variant]
+        // Saved state follows what the files now resolve to. After Reset that is an inherited
+        // layout, which differs from the reset defaults on screen, so leaving the variant still
+        // saves the reset instead of reloading the inherited layout over it.
+        savedLayouts[variant] = LayoutManager.shared.load(for: gameId, variant: variant)
         for other in ControllerLayoutVariant.allCases where other != variant {
             reloadIfUnedited(other)
         }
