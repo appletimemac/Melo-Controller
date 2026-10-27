@@ -73,6 +73,33 @@ public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
         let bottomRow = stickButtons ? 45 * controllerScale + 32 : 35 * controllerScale
         return 32 + 20 * controllerScale + 15 + max(160, 145 * controllerScale) + 20 + bottomRow
     }
+
+    /// The largest size in `sizes` at which the spread arrangement still fits the pane, rounded
+    /// down to a whole percent, or nil when it does not fit even at the smallest.
+    static func largestSpreadScale(
+        in sizes: ClosedRange<CGFloat>,
+        paneSize: CGSize,
+        stickButtons: Bool,
+        foldWidth: CGFloat
+    ) -> CGFloat? {
+        func fits(_ scale: CGFloat) -> Bool {
+            Self(paneSize: paneSize, controllerScale: scale, stickButtons: stickButtons, foldWidth: foldWidth) == .landscape
+        }
+        guard fits(sizes.lowerBound) else { return nil }
+        if fits(sizes.upperBound) { return sizes.upperBound }
+        // The width the spread arrangement needs only grows with its size, so the sizes that fit
+        // end at a single edge.
+        var low = sizes.lowerBound
+        var high = sizes.upperBound
+        for _ in 0..<20 {
+            let mid = (low + high) / 2
+            if fits(mid) { low = mid } else { high = mid }
+        }
+        // The search reaches an edge that falls on a whole percent only from below.
+        var percent = (low * 100).rounded(.down)
+        if fits((percent + 1) / 100) { percent += 1 }
+        return min(sizes.upperBound, max(sizes.lowerBound, percent / 100))
+    }
 }
 
 /// The two stored layouts of one game (or of the default), one per variant.

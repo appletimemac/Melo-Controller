@@ -33,7 +33,9 @@ struct LayoutEditorView: View {
     @Binding var showEditControls: Bool
     @Binding var layout: LayoutConfig
     var variant: ControllerLayoutVariant
-    
+    /// Sizes the Controller Size slider offers (``ControllerPlacement/availableScales``).
+    var sizes: ClosedRange<CGFloat> = ControllerPlacement.scaleRange
+
     @Binding var selectedButton: String?
     @Binding var selectedJoystick: String?
     
@@ -223,7 +225,7 @@ struct LayoutEditorView: View {
                     get: { CGFloat(resolvedControllerScale ?? defaultControllerScale) },
                     set: { UserDefaults.standard.set(Double($0), forKey: variant.scaleKey) }
                 ),
-                range: ControllerPlacement.scaleRange
+                range: sizes
             )
             
             EditorToggleRow(

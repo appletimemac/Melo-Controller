@@ -10,7 +10,7 @@ import SwiftUI
 /// reads the values from ``ControllerLayoutVariant/verticalOffsetKey`` and
 /// ``ControllerLayoutVariant/scaleKey``.
 public struct ControllerPlacement: Equatable, Sendable {
-    /// Sizes a host should offer, matching the layout editor's Controller Size slider.
+    /// Every size a host may offer. ``availableScales`` narrows it for the arrangement showing.
     public static let scaleRange: ClosedRange<CGFloat> = 0.5...2.0
 
     /// The arrangement showing now. Each arrangement keeps its own offset and size.
@@ -19,11 +19,22 @@ public struct ControllerPlacement: Equatable, Sendable {
     public var offsetRange: ClosedRange<CGFloat>
     /// The size the arrangement is drawn at.
     public var scale: CGFloat
+    /// Sizes the arrangement showing can take in this pane, matching the layout editor's
+    /// Controller Size slider. The spread arrangement stops at the largest size that still fits:
+    /// past it the pane would switch to the compact arrangement, and the spread size could no
+    /// longer be changed from there.
+    public var availableScales: ClosedRange<CGFloat>
 
-    public init(variant: ControllerLayoutVariant, offsetRange: ClosedRange<CGFloat>, scale: CGFloat) {
+    public init(
+        variant: ControllerLayoutVariant,
+        offsetRange: ClosedRange<CGFloat>,
+        scale: CGFloat,
+        availableScales: ClosedRange<CGFloat> = scaleRange
+    ) {
         self.variant = variant
         self.offsetRange = offsetRange
         self.scale = scale
+        self.availableScales = availableScales
     }
 
     /// The offset the controller actually uses for a stored one. A pane smaller than the one the

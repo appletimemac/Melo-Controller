@@ -151,7 +151,12 @@ public struct ControllerView: View {
             let placement = ControllerPlacement(
                 variant: variant,
                 offsetRange: offsetRange(paneHeight: proxy.size.height),
-                scale: CGFloat(scale(for: variant))
+                scale: CGFloat(scale(for: variant)),
+                availableScales: availableScales(
+                    for: variant,
+                    paneSize: proxy.size,
+                    foldWidth: clearance.centerFoldWidth
+                )
             )
             ZStack {
                 ControllerSurface(
@@ -182,6 +187,7 @@ public struct ControllerView: View {
                             showEditControls: $showEditControls,
                             layout: layout,
                             variant: variant,
+                            sizes: placement.availableScales,
                             selectedButton: $selectedButton,
                             selectedJoystick: $selectedJoystick,
                             gameId: gameId,
@@ -231,6 +237,27 @@ public struct ControllerView: View {
         case .portrait: return portraitScale ?? controllerScale
         case .landscape: return landscapeScale ?? controllerScale
         }
+    }
+
+    /// The variant is chosen at the spread arrangement's own size, so only the spread arrangement
+    /// can outgrow its pane; the compact one takes every size.
+    private func availableScales(
+        for variant: ControllerLayoutVariant,
+        paneSize: CGSize,
+        foldWidth: CGFloat
+    ) -> ClosedRange<CGFloat> {
+        let sizes = ControllerPlacement.scaleRange
+        let current = CGFloat(scale(for: variant))
+        // A size from Settings outside the range still shows, so the range keeps it.
+        let smallest = min(sizes.lowerBound, current)
+        guard variant == .landscape else { return smallest...max(sizes.upperBound, current) }
+        let largest = ControllerLayoutVariant.largestSpreadScale(
+            in: smallest...sizes.upperBound,
+            paneSize: paneSize,
+            stickButtons: stickButton,
+            foldWidth: foldWidth
+        ) ?? current
+        return smallest...max(largest, current)
     }
 
     private func storedOffset(for variant: ControllerLayoutVariant) -> CGFloat {
