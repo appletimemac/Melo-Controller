@@ -17,8 +17,9 @@ struct ControllerSurface: View {
     @Binding var hideABXY: Bool
     @Binding var selectedButton: String?
     @Binding var selectedJoystick: String?
-    /// The frame the built-in layouts' controls take in the pane, before any vertical offset; nil
-    /// for a custom layout, which is never measured.
+    /// Where the built-in layouts' controls are drawn in the pane, with each control's own offset
+    /// and size but before the controller's vertical offset; nil for a custom layout, which is
+    /// never measured.
     @Binding var controlsFrame: CGRect?
     var customControllerLayout: ((@escaping SubView, @escaping JoystickSubView, Bool) -> AnyView)?
 
@@ -71,11 +72,15 @@ struct ControllerSurface: View {
         .coordinateSpace(.named(Self.paneSpace))
     }
 
-    private static let paneSpace = "ControllerSurfacePane"
+    static let paneSpace = "ControllerSurfacePane"
 
     private func measuringControls(_ controls: some View) -> some View {
-        controls.onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.paneSpace)) } action: {
-            controlsFrame = $0
+        controls.onPreferenceChange(ControlFrameKey.self) { report in
+            // With every control hidden there is nothing to keep in the pane. A control being
+            // dragged in the editor moves every frame; the frame waits for the drop, which always
+            // reports again because the drag has ended.
+            guard let report, !report.isDragging || controlsFrame == nil else { return }
+            controlsFrame = report.frame
         }
     }
 
@@ -325,5 +330,50 @@ struct ControllerSurface: View {
                 selectedButton: $selectedButton,
             )
         )
+    }
+}
+
+/// Where the controls are drawn, in ``ControllerSurface``'s coordinate space.
+struct ControlFrameReport: Equatable {
+    var frame: CGRect
+    /// Whether any of the controls is being dragged in the editor.
+    var isDragging: Bool
+}
+
+/// The union of the frames the controls report.
+struct ControlFrameKey: PreferenceKey {
+    static let defaultValue: ControlFrameReport? = nil
+
+    static func reduce(value: inout ControlFrameReport?, nextValue: () -> ControlFrameReport?) {
+        guard let next = nextValue() else { return }
+        guard let current = value else {
+            value = next
+            return
+        }
+        value = ControlFrameReport(
+            frame: current.frame.union(next.frame),
+            isDragging: current.isDragging || next.isDragging
+        )
+    }
+}
+
+extension View {
+    /// Reports where this control is drawn to the surface that limits the controller's vertical
+    /// offset. Apply it inside the control's own offset and scale: they move the drawing without
+    /// moving the layout frame.
+    func reportsControlFrame(_ isShown: Bool = true, isDragging: Bool = false) -> some View {
+        background {
+            if isShown {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: ControlFrameKey.self,
+                        value: ControlFrameReport(
+                            frame: proxy.frame(in: .named(ControllerSurface.paneSpace)),
+                            isDragging: isDragging
+                        )
+                    )
+                }
+            }
+        }
     }
 }
