@@ -21,6 +21,9 @@ let package = Package(
         .target(
             name: "Melo-Controller"
         ),
-
+        .testTarget(
+            name: "Melo-ControllerTests",
+            dependencies: ["Melo-Controller"]
+        ),
     ]
 )
