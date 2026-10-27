@@ -64,6 +64,15 @@ public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
         let isSpread = paneSize.width >= paneSize.height && paneSize.width >= halves + center + fold
         self = isSpread ? .landscape : .portrait
     }
+
+    /// The height the compact arrangement takes at a size, padding included, so a host can tell
+    /// whether a band below the game is tall enough for it.
+    public static func compactHeight(controllerScale: CGFloat, stickButtons: Bool) -> CGFloat {
+        // Shoulder row, 15, the stick (which keeps its 160 pt frame when scaled down) or D-pad, 20,
+        // then Minus and Plus, or the padded L3 and R3 beside them; 16 pt of padding at each end.
+        let bottomRow = stickButtons ? 45 * controllerScale + 32 : 35 * controllerScale
+        return 32 + 20 * controllerScale + 15 + max(160, 145 * controllerScale) + 20 + bottomRow
+    }
 }
 
 /// The two stored layouts of one game (or of the default), one per variant.
