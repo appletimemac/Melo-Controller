@@ -33,6 +33,12 @@ public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
         "On-ScreenControllerOffset-\(rawValue)"
     }
 
+    /// The user default holding this arrangement's controller size, shared by every game. While it is
+    /// absent the arrangement uses the `On-ScreenControllerScale` default.
+    public var scaleKey: String {
+        "On-ScreenControllerScale-\(rawValue)"
+    }
+
     /// Width of one half of the controller at scale 1 (the shoulder row and the stick).
     static let halfWidth: CGFloat = 160
 
@@ -44,7 +50,8 @@ public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
 
     /// - Parameters:
     ///   - paneSize: The space the controller is laid out in.
-    ///   - controllerScale: The user's On-Screen Controller scale.
+    ///   - controllerScale: The spread arrangement's controller size, since the spread arrangement is
+    ///     only chosen when it fits at its own size.
     ///   - stickButtons: Whether the L3 and R3 buttons are shown beside Minus and Plus.
     ///   - foldWidth: Width of a fold that crosses the middle of the pane, which the center buttons
     ///     must also fit around (see ``FoldClearance/centerFoldWidth``).
@@ -56,6 +63,42 @@ public enum ControllerLayoutVariant: String, CaseIterable, Sendable {
         let fold = foldWidth > 0 ? foldWidth + 2 * FoldClearance.margin : 0
         let isSpread = paneSize.width >= paneSize.height && paneSize.width >= halves + center + fold
         self = isSpread ? .landscape : .portrait
+    }
+
+    /// The height the compact arrangement takes at a size, padding included, so a host can tell
+    /// whether a band below the game is tall enough for it.
+    public static func compactHeight(controllerScale: CGFloat, stickButtons: Bool) -> CGFloat {
+        // Shoulder row, 15, the stick (which keeps its 160 pt frame when scaled down) or D-pad, 20,
+        // then Minus and Plus, or the padded L3 and R3 beside them; 16 pt of padding at each end.
+        let bottomRow = stickButtons ? 45 * controllerScale + 32 : 35 * controllerScale
+        return 32 + 20 * controllerScale + 15 + max(160, 145 * controllerScale) + 20 + bottomRow
+    }
+
+    /// The largest size in `sizes` at which the spread arrangement still fits the pane, rounded
+    /// down to a whole percent, or nil when it does not fit even at the smallest.
+    static func largestSpreadScale(
+        in sizes: ClosedRange<CGFloat>,
+        paneSize: CGSize,
+        stickButtons: Bool,
+        foldWidth: CGFloat
+    ) -> CGFloat? {
+        func fits(_ scale: CGFloat) -> Bool {
+            Self(paneSize: paneSize, controllerScale: scale, stickButtons: stickButtons, foldWidth: foldWidth) == .landscape
+        }
+        guard fits(sizes.lowerBound) else { return nil }
+        if fits(sizes.upperBound) { return sizes.upperBound }
+        // The width the spread arrangement needs only grows with its size, so the sizes that fit
+        // end at a single edge.
+        var low = sizes.lowerBound
+        var high = sizes.upperBound
+        for _ in 0..<20 {
+            let mid = (low + high) / 2
+            if fits(mid) { low = mid } else { high = mid }
+        }
+        // The search reaches an edge that falls on a whole percent only from below.
+        var percent = (low * 100).rounded(.down)
+        if fits((percent + 1) / 100) { percent += 1 }
+        return min(sizes.upperBound, max(sizes.lowerBound, percent / 100))
     }
 }
 

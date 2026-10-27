@@ -17,7 +17,9 @@ struct EditableJoystickView: View {
     @Binding var selectedJoystick: String?
     @Binding var selectedButton: String?
     @GestureState private var dragOffset = CGSize.zero
-    @AppStorage("On-ScreenControllerScale") var controllerScale: Double = 1.0
+    @AppStorage("On-ScreenControllerScale") private var defaultControllerScale: Double = 1.0
+    @Environment(\.resolvedControllerScale) private var resolvedControllerScale
+    private var controllerScale: Double { resolvedControllerScale ?? defaultControllerScale }
     
     private var glass = ControllerGlassPreference()
     
@@ -70,11 +72,10 @@ struct EditableJoystickView: View {
                 .accessibilityAddTraits(selectedJoystick == id ? [.isButton, .isSelected] : .isButton)
                 .opacity(layout.joysticks[id]?.hidden ?? false ? 0.35 : 1)
                 .editorSelectionRing(isSelected: selectedJoystick == id, tint: .green)
-                .scaleEffect(
-                    (layout.joysticks[id]?.scale ?? 1.0)
-                        * controllerScale
-                        * (selectedJoystick == id ? 1.04 : 1.0)
-                )
+                // The selection bump stays out of the reported frame, like a button's.
+                .scaleEffect(selectedJoystick == id ? 1.04 : 1.0)
+                .reportsControlFrame(isDragging: dragOffset != .zero)
+                .scaleEffect((layout.joysticks[id]?.scale ?? 1.0) * controllerScale)
                 .offset(
                     x: (layout.joysticks[id]?.offset.width ?? 0) + dragOffset.width,
                     y: (layout.joysticks[id]?.offset.height ?? 0) + dragOffset.height
@@ -99,6 +100,7 @@ struct EditableJoystickView: View {
         } else {
             JoystickViewRepresentable(controller: controller, right: iscool, showBackground: $showBackground)
                 .frame(width: 160, height: 160)
+                .reportsControlFrame()
                 .scaleEffect((layout.joysticks[id]?.scale ?? 1.0) * controllerScale)
                 .offset(layout.joysticks[id]?.offset ?? .zero)
         }

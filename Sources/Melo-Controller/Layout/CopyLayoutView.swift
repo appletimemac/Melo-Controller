@@ -93,7 +93,14 @@ struct EditableButtonView: View {
                     .opacity(layout.buttons[button.id]?.hidden ?? false ? 0.35 : 1)
                     .accessibilityAddTraits(selectedButton == button.id ? [.isButton, .isSelected] : .isButton)
                     .editorSelectionRing(isSelected: selectedButton == button.id, isCircular: !button.isTrigger)
-                    .scaleEffect((layout.buttons[button.id]?.scale ?? 1.0) * (selectedButton == button.id ? 1.06 : 1.0))
+                    // The selection bump stays out of the reported frame, or selecting a control
+                    // would move a controller sitting at its offset limit.
+                    .scaleEffect(selectedButton == button.id ? 1.06 : 1.0)
+                    .reportsControlFrame(
+                        !(layout.buttons[button.id]?.hidden ?? false),
+                        isDragging: dragOffset != .zero
+                    )
+                    .scaleEffect(layout.buttons[button.id]?.scale ?? 1.0)
                     .offset(
                         x: (layout.buttons[button.id]?.offset.width ?? 0) + dragOffset.width,
                         y: (layout.buttons[button.id]?.offset.height ?? 0) + dragOffset.height
@@ -123,6 +130,7 @@ struct EditableButtonView: View {
                         .opacity(0)
                 } else {
                     ButtonView(controller: controller, button: button, layout: $layout, gameId: gameId)
+                        .reportsControlFrame()
                         .scaleEffect(layout.buttons[button.id]?.scale ?? 1.0)
                         .offset(layout.buttons[button.id]?.offset ?? .zero)
                 }

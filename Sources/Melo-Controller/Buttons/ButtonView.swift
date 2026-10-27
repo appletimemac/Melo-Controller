@@ -18,7 +18,9 @@ public struct ButtonView: View {
     
     @AppStorage("onscreenhandheld") var onscreenjoy: Bool = false
     @AppStorage("buttonSlide") private var buttonSlide = true
-    @AppStorage("On-ScreenControllerScale") var controllerScale: Double = 1.0
+    @AppStorage("On-ScreenControllerScale") private var defaultControllerScale: Double = 1.0
+    @Environment(\.resolvedControllerScale) private var resolvedControllerScale
+    private var controllerScale: Double { resolvedControllerScale ?? defaultControllerScale }
     private var glass = ControllerGlassPreference()
     
     @State private var isPressed = false

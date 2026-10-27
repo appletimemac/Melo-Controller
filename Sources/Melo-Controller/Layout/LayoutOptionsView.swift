@@ -21,6 +21,7 @@ struct LayoutOptionsView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var showingResetAlert = false
+    @State private var showingDefaultAlert = false
     @State private var showingCopySheet = false
     @State private var showingFileImporter = false
     
@@ -80,6 +81,12 @@ struct LayoutOptionsView: View {
                             showingFileImporter = true
                         }
                         
+                        if gameId != nil {
+                            actionRow("Use as Default for All Games", systemImage: "square.on.square", color: .indigo) {
+                                showingDefaultAlert = true
+                            }
+                        }
+
                         actionRow("Reset to Default Layout", systemImage: "arrow.clockwise", color: .orange) {
                             layout = LayoutManager.shared.load(for: nil, variant: variant)
                         }
@@ -120,6 +127,14 @@ struct LayoutOptionsView: View {
             }
         } message: {
             Text("This will delete the custom layout for this game and revert to the default layout.")
+        }
+        .alert("Use as Default?", isPresented: $showingDefaultAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Use as Default") {
+                LayoutManager.shared.save(layout, for: nil, variant: variant)
+            }
+        } message: {
+            Text("Games without a layout of their own will use this one. Games with their own layout keep it.")
         }
         .alert(alertTitle, isPresented: $showingAlert) {
             Button("OK", role: .cancel) {}
